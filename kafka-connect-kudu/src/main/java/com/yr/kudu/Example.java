@@ -31,7 +31,7 @@ public class Example {
 
     public static void createExampleTable(KuduClient client, String tableName)  throws KuduException {
         // Set up a simple schema.
-        List<ColumnSchema> columns = new ArrayList<>(2);
+        List<ColumnSchema> columns = new ArrayList(2);
         columns.add(new ColumnSchema.ColumnSchemaBuilder("key", Type.INT32)
                 .key(true)
                 .build());
@@ -43,7 +43,7 @@ public class Example {
         // Kudu also supports partitioning by key range. Hash and range partitioning can be combined.
         // For more information, see http://kudu.apache.org/docs/schema_design.html.
         CreateTableOptions cto = new CreateTableOptions();
-        List<String> hashKeys = new ArrayList<>(1);
+        List<String> hashKeys = new ArrayList(1);
         hashKeys.add("key");
         int numBuckets = 8;
         cto.addHashPartitions(hashKeys, numBuckets);
@@ -57,6 +57,7 @@ public class Example {
         // Open the newly-created table and create a KuduSession.
         KuduTable table = client.openTable(tableName);
         KuduSession session = client.newSession();
+
         for (int i = 0; i < numRows; i++) {
             Insert insert = table.newInsert();
             PartialRow row = insert.getRow();
@@ -69,7 +70,6 @@ public class Example {
             }
             session.apply(insert);
         }
-
         // Call session.close() to end the session and ensure the rows are
         // flushed and errors are returned.
         // You can also call session.flush() to do the same without ending the session.
@@ -100,7 +100,7 @@ public class Example {
         Schema schema = table.getSchema();
 
         // Scan with a predicate on the 'key' column, returning the 'value' and "added" columns.
-        List<String> projectColumns = new ArrayList<>(2);
+        List<String> projectColumns = new ArrayList(2);
         projectColumns.add("key");
         projectColumns.add("value");
         projectColumns.add("added");
