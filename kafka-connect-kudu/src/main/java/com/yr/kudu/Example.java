@@ -1,4 +1,4 @@
-package com.segi.kudu;
+package com.yr.kudu;
 
 import java.util.ArrayList;
 import java.util.List;

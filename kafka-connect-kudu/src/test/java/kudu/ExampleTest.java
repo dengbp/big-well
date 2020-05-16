@@ -8,7 +8,7 @@ package kudu;
  */
 import static org.junit.Assert.assertTrue;
 
-import com.segi.kudu.Example;
+import com.yr.kudu.Example;
 import org.apache.kudu.client.KuduException;
 import org.apache.kudu.test.KuduTestHarness;
 import org.junit.Rule;

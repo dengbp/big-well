@@ -1,5 +1,5 @@
 #! /bin/sh
-name="segi-license-tool-1.0"
+name="bill-well-1.0"
 Xmx=512m
 Xms=512m
 Xmn=256m

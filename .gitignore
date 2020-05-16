@@ -1,0 +1,6 @@
+# Created by .ignore support plugin (hsz.mobi)
+.idea/workspace.xml
+kafka-connect-kudu/src/main/java/com/.DS_Store
+kafka-connect-kudu/target/
+log-streams/src/test/
+log-streams/target/

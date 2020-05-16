@@ -1,5 +1,5 @@
 #! /bin/sh
-name="segi-license-tool-1.0"
+name="bill-well-1.0"
 pid=${name}".pid"
 echo -n "stop $name ..."
 if [ -f "$pid" ]

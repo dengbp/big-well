@@ -1,4 +1,4 @@
-package com.segi.connector;
+package com.yr.connector;
 
 import org.apache.kafka.common.config.AbstractConfig;
 import org.apache.kafka.common.config.ConfigDef;

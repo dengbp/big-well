@@ -1,4 +1,4 @@
-package com.segi.connector;
+package com.yr.connector;
 
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
