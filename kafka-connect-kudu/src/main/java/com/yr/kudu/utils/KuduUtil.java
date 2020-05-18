@@ -24,10 +24,20 @@ public class KuduUtil {
         key = key.trim().toLowerCase();
         switch (type){
             case "int8":
-                row.addByte(key,json.getByteValue(key));
+                Byte byteValue = json.getByte(key);
+                if(null == byteValue){
+                    row.isNull(key);
+                    break;
+                }
+                row.addByte(key,byteValue);
                 break;
             case "int16":
-                row.addShort(key,json.getShortValue(key));
+                Short aShort = json.getShort(key);
+                if(null == aShort){
+                    row.isNull(key);
+                    break;
+                }
+                row.addShort(key,aShort);
                 break;
             case "int32":
                 Integer integer = json.getInteger(key);
@@ -65,12 +75,20 @@ public class KuduUtil {
                 row.addBoolean(key,aBoolean);
                 break;
             case "double":
-                double doubleValue = json.getDouble(key);
-
+                Double doubleValue = json.getDouble(key);
+                if(null == doubleValue){
+                    row.isNull(key);
+                    break;
+                }
                 row.addDouble(key,doubleValue);
                 break;
             case "float":
-                row.addFloat(key,json.getFloatValue(key));
+                Float floatValue = json.getFloat(key);
+                if(null == floatValue){
+                    row.isNull(key);
+                    break;
+                }
+                row.addFloat(key,floatValue);
                 break;
             default:
                 row.isNull(key);
