@@ -2,6 +2,7 @@ package com.yr.connector;
 
 import com.alibaba.fastjson.JSONObject;
 import com.yr.kudu.utils.ConstantInitializationUtil;
+import com.yr.kudu.utils.KuduUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.utils.AppInfoParser;
@@ -36,7 +37,7 @@ public class KuduSinkConnector extends SinkConnector {
         log.info("receive config:{}", JSONObject.toJSONString(configProperties));
         new KuduSinkConnectorConfig(props);
         try {
-            ConstantInitializationUtil.initialization("all");
+            KuduUtil.init("tb_uhome_acct_item");
         } catch (Exception e) {
             e.printStackTrace();
             log.error("初始化失败...");

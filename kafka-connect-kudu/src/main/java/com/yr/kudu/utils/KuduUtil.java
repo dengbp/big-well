@@ -1,12 +1,10 @@
 package com.yr.kudu.utils;
 
 import com.alibaba.fastjson.JSONObject;
-import com.yr.kudu.arithmetic.KMPArithmetic;
+import com.yr.kudu.constant.SessionPool;
 import org.apache.kudu.client.PartialRow;
 
 import java.lang.reflect.Field;
-import java.text.SimpleDateFormat;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -17,39 +15,40 @@ import java.util.Map;
  */
 public class KuduUtil {
 
-    public static Map<String,Object> getProperty(Object object)  throws Exception {
-        Field[] fields = object.getClass().getDeclaredFields();
-        HashMap<String, Object> stringObjectHashMap = new HashMap<>();
-        for (Field field : fields) {
-            field.setAccessible(true);
-            String classType = field.getType().toString();
-            int lastIndex = classType.lastIndexOf(".");
-            classType = classType.substring(lastIndex + 1);
-            stringObjectHashMap.put(field.getName(),"");
-            System.out.println("fieldName：" + field.getName() + ",type:"
-                    + classType + ",value:" + field.get(object));
-        }
-        return stringObjectHashMap;
+    public static void init(String tableName) throws Exception {
+        ConstantInitializationUtil.initialization(tableName);
+        SessionPool.initSessionPool();
     }
 
     public static void typeConversion(JSONObject json, PartialRow row, String key, String type) {
         type = type.trim().toLowerCase();
-        int decimal = KMPArithmetic.kmp(type, "decimal", new int["decimal".length()]);
-        if(decimal == 0){
-            type = "decimal";
-        }
         switch (type){
-            case "integer":
+            case "int8":
+                row.addByte(key,json.getByteValue(key));
+                break;
+            case "int16":
+                row.addShort(key,json.getShortValue(key));
+                break;
+            case "int32":
                 row.addInt(key,json.getInteger(key));
                 break;
-            case "varchar":
-                row.addString(key,json.getString(key));
-                break;
-            case "bigint":
+            case "int64":
                 row.addLong(key,json.getLongValue(key));
+                break;
+            case "string":
+                row.addString(key,json.getString(key));
                 break;
             case "decimal":
                 row.addDecimal(key,json.getBigDecimal(key));
+                break;
+            case "bool":
+                row.addBoolean(key,json.getBooleanValue(key));
+                break;
+            case "double":
+                row.addDouble(key,json.getDoubleValue(key));
+                break;
+            case "float":
+                row.addFloat(key,json.getFloatValue(key));
                 break;
             default:
                 row.isNull(key);

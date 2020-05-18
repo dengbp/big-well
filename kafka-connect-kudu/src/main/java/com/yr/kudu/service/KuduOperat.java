@@ -29,7 +29,7 @@ public class KuduOperat {
         KuduTable kuduTable = SessionPool.client.openTable(tableName);
         Insert insert = kuduTable.newInsert();
         PartialRow row = insert.getRow();
-        Map<String,String> kuduTableType = TableTypeConstantMap.billTables.get(tableName);
+        Map<String,String> kuduTableType = TableTypeConstantMap.kuduTables.get(tableName);
         String[] arrays = (String[]) kuduTableType.keySet().toArray();
         for(int i = 0; i < arrays.length; i++){
             String key = arrays[i];

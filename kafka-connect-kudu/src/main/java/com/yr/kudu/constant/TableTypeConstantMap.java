@@ -15,14 +15,9 @@ public class TableTypeConstantMap {
 
     private static TableTypeConstantMap  tableTypeConstantMap;
     /**
-     * 计费用表
+     * 存储需要同步的表信息
      */
-    public static Map<String,Map<String,String>> billTables = new HashMap<>();
-
-    /**
-     * 基础信息用表
-     */
-    public static Map<String,Map<String,String>> basicTables = new HashMap<>();
+    public static Map<String,Map<String,String>> kuduTables = new HashMap<>();
 
 
 
