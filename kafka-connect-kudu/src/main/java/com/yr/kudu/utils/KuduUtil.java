@@ -21,6 +21,7 @@ public class KuduUtil {
 
     public static void typeConversion(JSONObject json, PartialRow row, String key, String type) {
         type = type.trim().toLowerCase();
+        key = key.trim().toLowerCase();
         switch (type){
             case "int8":
                 row.addByte(key,json.getByteValue(key));
@@ -56,10 +57,17 @@ public class KuduUtil {
                 row.addDecimal(key,bigDecimal);
                 break;
             case "bool":
-                row.addBoolean(key,json.getBooleanValue(key));
+                Boolean aBoolean = json.getBoolean(key);
+                if(aBoolean == null){
+                    row.isNull(key);
+                    break;
+                }
+                row.addBoolean(key,aBoolean);
                 break;
             case "double":
-                row.addDouble(key,json.getDoubleValue(key));
+                double doubleValue = json.getDouble(key);
+
+                row.addDouble(key,doubleValue);
                 break;
             case "float":
                 row.addFloat(key,json.getFloatValue(key));
