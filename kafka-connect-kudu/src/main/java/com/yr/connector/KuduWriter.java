@@ -3,9 +3,12 @@ package com.yr.connector;
 import com.yr.kudu.service.KuduOperat;
 import com.yr.pojo.TableValues;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.kafka.connect.json.JsonConverter;
 import org.apache.kafka.connect.sink.SinkRecord;
+import org.apache.kafka.connect.storage.Converter;
 import org.apache.kudu.client.KuduException;
 
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 /**
@@ -29,6 +32,12 @@ public class KuduWriter {
     private final boolean dropInvalidMessage;
     /** topic——>table */
     private final Map<String,String> topicTableMap;
+    private static final Converter jsonConverter;
+
+    static {
+        jsonConverter = new JsonConverter();
+        jsonConverter.configure(Collections.singletonMap("schemas.enable", "false"), false);
+    }
 
 
     private KuduWriter(KuduClient client, String type, boolean ignoreKey, Set<String> ignoreKeyTopics, boolean ignoreSchema, Set<String> ignoreSchemaTopics, Map<String, String> topicToTableMap, long flushTimeoutMs, boolean dropInvalidMessage, Map<String,String> topicTableMap) {
@@ -51,9 +60,7 @@ public class KuduWriter {
 
     public void write(Collection<SinkRecord> records) {
         for (SinkRecord record : records){
-            log.info("topic:{}",record.topic());
             String tableName = topicTableMap.get(record.topic());
-            log.info("table:{}",tableName);
             try {
                 KuduOperat.insert(new TableValues(tableName,record.value().toString()));
             } catch (InterruptedException e) {

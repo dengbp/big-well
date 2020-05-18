@@ -3,14 +3,9 @@ package kudu;
 import com.yr.kudu.constant.SessionPool;
 import com.yr.kudu.constant.TableTypeConstantMap;
 import com.yr.kudu.utils.KuduUtil;
-import org.apache.kudu.ColumnSchema;
 import org.apache.kudu.client.KuduSession;
-import org.apache.kudu.client.KuduTable;
 import org.junit.Test;
-import sun.tools.jconsole.Tab;
 
-import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.BlockingQueue;
 

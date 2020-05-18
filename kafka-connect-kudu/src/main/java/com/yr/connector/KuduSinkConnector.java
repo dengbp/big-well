@@ -36,12 +36,6 @@ public class KuduSinkConnector extends SinkConnector {
         configProperties = props;
         log.info("receive config:{}", JSONObject.toJSONString(configProperties));
         new KuduSinkConnectorConfig(props);
-        try {
-            KuduUtil.init("tb_uhome_acct_item");
-        } catch (Exception e) {
-            e.printStackTrace();
-            log.error("初始化失败...");
-        }
     }
 
     @Override
