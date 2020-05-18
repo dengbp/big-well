@@ -1,5 +1,6 @@
 package com.yr.kudu.utils;
 
+import com.yr.kudu.constant.SessionPool;
 import com.yr.kudu.constant.TableTypeConstantMap;
 import org.apache.commons.io.IOUtils;
 import org.yaml.snakeyaml.Yaml;
@@ -20,11 +21,12 @@ public class ConstantInitializationUtil {
 
     public static void initialization(String modelName) throws Exception {
         setProperty(TableTypeConstantMap.getTableTypeConstantMap(),readFile(),modelName);
+        SessionPool.initSessionPool();
     }
 
     public static Map<String,Object> readFile() throws IOException {
         Map<String, Object> result;
-        File file = new File("/Users/baiyang/Documents/my_test/tableMessage.yaml");
+        File file = new File("/data/platform/confluent/confluent-5.4.1/share/java/kafka-connect-kudu/tableMessage.yaml");
         FileInputStream fileInputStream = new FileInputStream(file);
         String s = IOUtils.toString(fileInputStream,"UTF-8");
         Yaml yaml = new Yaml();

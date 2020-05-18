@@ -16,6 +16,10 @@ public class KuduClient {
         this.props = props;
     }
 
+    public Map<String, String> getProps() {
+        return props;
+    }
+
     public void close(){
 
     }

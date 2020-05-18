@@ -1,8 +1,10 @@
 package com.yr.connector;
 
-import com.alibaba.fastjson.JSONObject;
+import com.yr.kudu.service.KuduOperat;
+import com.yr.pojo.TableValues;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.connect.sink.SinkRecord;
+import org.apache.kudu.client.KuduException;
 
 import java.util.*;
 
@@ -25,9 +27,11 @@ public class KuduWriter {
     private final long flushTimeoutMs;
     private final BulkProcessor bulkProcessor;
     private final boolean dropInvalidMessage;
+    /** topic——>table */
+    private final Map<String,String> topicTableMap;
 
 
-    private KuduWriter(KuduClient client, String type, boolean ignoreKey, Set<String> ignoreKeyTopics, boolean ignoreSchema, Set<String> ignoreSchemaTopics, Map<String, String> topicToTableMap, long flushTimeoutMs,boolean dropInvalidMessage) {
+    private KuduWriter(KuduClient client, String type, boolean ignoreKey, Set<String> ignoreKeyTopics, boolean ignoreSchema, Set<String> ignoreSchemaTopics, Map<String, String> topicToTableMap, long flushTimeoutMs, boolean dropInvalidMessage, Map<String,String> topicTableMap) {
         this.client = client;
         this.type = type;
         this.ignoreKey = ignoreKey;
@@ -36,6 +40,7 @@ public class KuduWriter {
         this.ignoreSchemaTopics = ignoreSchemaTopics;
         this.topicToTableMap = topicToTableMap;
         this.flushTimeoutMs = flushTimeoutMs;
+        this.topicTableMap = topicTableMap;
         this.bulkProcessor = new BulkProcessor();
         this.dropInvalidMessage = dropInvalidMessage;
     }
@@ -46,7 +51,17 @@ public class KuduWriter {
 
     public void write(Collection<SinkRecord> records) {
         for (SinkRecord record : records){
-            log.info("consumer message:{}",JSONObject.toJSONString(record));
+            log.info("topic:{}",record.topic());
+            String tableName = topicTableMap.get(record.topic());
+            log.info("table:{}",tableName);
+            try {
+                KuduOperat.insert(new TableValues(tableName,record.value().toString()));
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            } catch (KuduException e) {
+                e.printStackTrace();
+                log.error("同步异常数据：{}",record.toString());
+            }
         }
     }
 
@@ -148,9 +163,14 @@ public class KuduWriter {
 
 
         public KuduWriter build() {
+            String[] tableMaps = client.getProps().get("topic.table.map").split(",");
+            Map<String,String> map = new HashMap();
+            for (String table : tableMaps){
+                map.put(table.split(":")[0],table.split(":")[1]);
+            }
             return new KuduWriter(client,type,ignoreKey, ignoreKeyTopics,ignoreSchema,
-                    ignoreSchemaTopics, topicToTableMap,flushTimeoutMs,dropInvalidMessage
-            );
+                    ignoreSchemaTopics, topicToTableMap,flushTimeoutMs,dropInvalidMessage,
+                    map);
         }
     }
 }

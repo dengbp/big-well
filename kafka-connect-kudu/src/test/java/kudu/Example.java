@@ -1,4 +1,4 @@
-package com.yr.kudu;
+package kudu;
 
 import java.util.ArrayList;
 import java.util.List;
