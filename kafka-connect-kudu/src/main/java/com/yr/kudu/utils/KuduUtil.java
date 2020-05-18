@@ -4,6 +4,7 @@ import com.alibaba.fastjson.JSONObject;
 import com.yr.kudu.constant.SessionPool;
 import org.apache.kudu.client.PartialRow;
 
+import java.math.BigDecimal;
 import java.util.Map;
 
 /**
@@ -28,16 +29,31 @@ public class KuduUtil {
                 row.addShort(key,json.getShortValue(key));
                 break;
             case "int32":
-                row.addInt(key,json.getInteger(key));
+                Integer integer = json.getInteger(key);
+                if(integer == null){
+                    row.isNull(key);
+                    break;
+                }
+                row.addInt(key,integer);
                 break;
             case "int64":
                 row.addLong(key,json.getLongValue(key));
                 break;
             case "string":
-                row.addString(key,json.getString(key));
+                String string = json.getString(key);
+                if(string == null){
+                    row.isNull(key);
+                    break;
+                }
+                row.addString(key,string);
                 break;
             case "decimal":
-                row.addDecimal(key,json.getBigDecimal(key));
+                BigDecimal bigDecimal = json.getBigDecimal(key);
+                if(bigDecimal == null){
+                    row.isNull(key);
+                    break;
+                }
+                row.addDecimal(key,bigDecimal);
                 break;
             case "bool":
                 row.addBoolean(key,json.getBooleanValue(key));
