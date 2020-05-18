@@ -32,9 +32,8 @@ public class KuduOperat {
      **/
 
     public static void insert(TableValues tableValues) throws InterruptedException, KuduException {
-        log.info("message:{}",tableValues.getValus());
         JSONObject json = JSONObject.parseObject(tableValues.getValus());
-        String tableName = json.getString(tableValues.getTableName());
+        String tableName = tableValues.getTableName();
         KuduSession session = sessionQueue.take();
         KuduTable kuduTable = SessionPool.client.openTable(tableName);
         Insert insert = kuduTable.newInsert();

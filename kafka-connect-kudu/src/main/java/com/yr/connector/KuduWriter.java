@@ -32,12 +32,6 @@ public class KuduWriter {
     private final boolean dropInvalidMessage;
     /** topic——>table */
     private final Map<String,String> topicTableMap;
-    private static final Converter jsonConverter;
-
-    static {
-        jsonConverter = new JsonConverter();
-        jsonConverter.configure(Collections.singletonMap("schemas.enable", "false"), false);
-    }
 
 
     private KuduWriter(KuduClient client, String type, boolean ignoreKey, Set<String> ignoreKeyTopics, boolean ignoreSchema, Set<String> ignoreSchemaTopics, Map<String, String> topicToTableMap, long flushTimeoutMs, boolean dropInvalidMessage, Map<String,String> topicTableMap) {
@@ -60,8 +54,10 @@ public class KuduWriter {
 
     public void write(Collection<SinkRecord> records) {
         for (SinkRecord record : records){
+            log.info("record:{}",record.value()+"");
             String tableName = topicTableMap.get(record.topic());
             try {
+                log.info("tableName:{}",tableName);
                 KuduOperat.insert(new TableValues(tableName,record.value().toString()));
             } catch (InterruptedException e) {
                 e.printStackTrace();

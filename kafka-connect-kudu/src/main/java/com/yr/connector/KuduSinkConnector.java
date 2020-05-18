@@ -34,7 +34,6 @@ public class KuduSinkConnector extends SinkConnector {
     public void start(Map<String, String> props) {
         log.info("KuduSinkConnector begin start...");
         configProperties = props;
-        log.info("receive config:{}", JSONObject.toJSONString(configProperties));
         new KuduSinkConnectorConfig(props);
     }
 
