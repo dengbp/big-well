@@ -39,9 +39,9 @@ public class KuduOperat {
         Insert insert = kuduTable.newInsert();
         PartialRow row = insert.getRow();
         Map<String,String> kuduTableType = TableTypeConstantMap.kuduTables.get(tableName);
-        String[] arrays = (String[]) kuduTableType.keySet().toArray();
-        for(int i = 0; i < arrays.length; i++){
-            String key = arrays[i];
+        Object[] objects = kuduTableType.keySet().toArray();
+        for(int i = 0; i < objects.length; i++){
+            String key = objects[i].toString();
             String type = kuduTableType.get(key);
             KuduUtil.typeConversion(json, row, key, type);
         }

@@ -2,6 +2,7 @@ package com.yr.kudu.constant;
 
 import org.apache.kudu.client.KuduClient;
 import org.apache.kudu.client.KuduSession;
+import org.apache.kudu.client.SessionConfiguration;
 
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -25,6 +26,7 @@ public class SessionPool {
         int i = 0;
         while (i < cpuNum){
             KuduSession kuduSession = client.newSession();
+            kuduSession.setFlushMode(SessionConfiguration.FlushMode.AUTO_FLUSH_BACKGROUND);
             sessions.add(kuduSession);
             i++;
         }

@@ -4,8 +4,6 @@ import com.alibaba.fastjson.JSONObject;
 import com.yr.kudu.constant.SessionPool;
 import org.apache.kudu.client.PartialRow;
 
-import java.lang.reflect.Field;
-import java.util.HashMap;
 import java.util.Map;
 
 /**
