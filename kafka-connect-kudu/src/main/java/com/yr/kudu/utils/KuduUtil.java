@@ -5,7 +5,6 @@ import com.yr.kudu.constant.SessionPool;
 import org.apache.kudu.client.PartialRow;
 
 import java.math.BigDecimal;
-import java.util.Map;
 
 /**
  * @author baiyang
@@ -19,80 +18,91 @@ public class KuduUtil {
         SessionPool.initSessionPool();
     }
 
-    public static void typeConversion(JSONObject json, PartialRow row, String key, String type) {
-        type = type.trim().toLowerCase();
-        key = key.trim().toLowerCase();
+    public static void typeConversion(JSONObject json, PartialRow row, @org.jetbrains.annotations.NotNull String key, String type) {
         switch (type){
             case "int8":
                 Byte byteValue = json.getByte(key);
-                if(null == byteValue){
+                if (isNullObject(byteValue)) {
                     row.isNull(key);
-                    break;
+                } else {
+                    row.addByte(key, byteValue);
                 }
-                row.addByte(key,byteValue);
                 break;
             case "int16":
                 Short aShort = json.getShort(key);
-                if(null == aShort){
+                if (isNullObject(aShort)) {
                     row.isNull(key);
-                    break;
+                } else {
+                    row.addShort(key, aShort);
                 }
-                row.addShort(key,aShort);
                 break;
             case "int32":
                 Integer integer = json.getInteger(key);
-                if(integer == null){
+                if (isNullObject(integer)) {
                     row.isNull(key);
-                    break;
+                } else {
+                    row.addInt(key, integer);
                 }
-                row.addInt(key,integer);
                 break;
             case "int64":
-                row.addLong(key,json.getLongValue(key));
+                Long longValue = json.getLong(key);
+                if (isNullObject(longValue)) {
+                    row.isNull(key);
+                } else {
+                    row.addLong(key, longValue);
+                }
                 break;
             case "string":
                 String string = json.getString(key);
-                if(string == null){
+                if (isNullObject(string)) {
                     row.isNull(key);
-                    break;
-                }
+                } else {
                 row.addString(key,string);
+                }
                 break;
             case "decimal":
                 BigDecimal bigDecimal = json.getBigDecimal(key);
-                if(bigDecimal == null){
+                if (isNullObject(bigDecimal)) {
                     row.isNull(key);
-                    break;
+                } else {
+                    row.addDecimal(key, bigDecimal);
                 }
-                row.addDecimal(key,bigDecimal);
                 break;
             case "bool":
                 Boolean aBoolean = json.getBoolean(key);
-                if(aBoolean == null){
+                if (isNullObject(aBoolean)) {
                     row.isNull(key);
-                    break;
+                } else {
+                    row.addBoolean(key, aBoolean);
                 }
-                row.addBoolean(key,aBoolean);
                 break;
             case "double":
                 Double doubleValue = json.getDouble(key);
-                if(null == doubleValue){
+                if (!isNullObject(doubleValue)) {
+                    row.addDouble(key, doubleValue);
+                } else {
                     row.isNull(key);
-                    break;
                 }
-                row.addDouble(key,doubleValue);
                 break;
             case "float":
                 Float floatValue = json.getFloat(key);
-                if(null == floatValue){
+                if (isNullObject(floatValue)) {
                     row.isNull(key);
-                    break;
+                } else {
+                    row.addFloat(key, floatValue);
                 }
-                row.addFloat(key,floatValue);
                 break;
             default:
                 row.isNull(key);
                 return;
+        }
+    }
+
+    public static boolean isNullObject(Object source){
+        if(null == source){
+            return true;
+        } else {
+            return false;
         }
     }
 }
