@@ -20,8 +20,13 @@ import java.util.List;
 
 public interface BulkClient<R, B> {
 
-  B bulkRequest(List<R> batch);
-
-  BulkResponse execute(B req) throws IOException;
+  /**
+   * Description todo
+   * @param req
+   * @return B
+   * @Author dengbp
+   * @Date 17:30 2020-05-19
+   **/
+  B execute(List<R> req) throws IOException;
 
 }

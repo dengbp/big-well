@@ -28,6 +28,8 @@ import org.apache.kudu.client.RowResultIterator;
 public class Example {
     private static final Double DEFAULT_DOUBLE = 12.345;
     private static final String KUDU_MASTERS = System.getProperty("kuduMasters", "192.168.1.9:7051");
+    private final static int OPERATION_BATCH = 500;
+
 
     public static void createExampleTable(KuduClient client, String tableName)  throws KuduException {
         // Set up a simple schema.

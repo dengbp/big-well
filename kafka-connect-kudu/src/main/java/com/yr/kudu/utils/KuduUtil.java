@@ -1,7 +1,8 @@
 package com.yr.kudu.utils;
 
 import com.alibaba.fastjson.JSONObject;
-import com.yr.kudu.constant.SessionPool;
+import com.yr.kudu.session.SessionManager;
+import org.apache.kudu.client.KuduClient;
 import org.apache.kudu.client.PartialRow;
 
 import java.math.BigDecimal;
@@ -13,12 +14,12 @@ import java.math.BigDecimal;
  */
 public class KuduUtil {
 
-    public static void init(String tableName) throws Exception {
-        ConstantInitializationUtil.initialization(tableName);
-        SessionPool.initSessionPool();
+    public static void init(KuduClient client,String tableName) throws Exception {
+        ConstantInitializationUtil.initialization(client,tableName);
     }
 
     public static void typeConversion(JSONObject json, PartialRow row, @org.jetbrains.annotations.NotNull String key, String type) {
+        json.keySet().forEach(k->k.toLowerCase());
         switch (type){
             case "int8":
                 Byte byteValue = json.getByte(key);

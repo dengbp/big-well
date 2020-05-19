@@ -16,8 +16,28 @@
 package com.yr.connector.bulk;
 
 
-import java.util.List;
+import lombok.Data;
+import org.apache.kudu.client.KuduTable;
 
 
-public interface BulkRequest {
+/**
+ * Description todo
+ * @Author dengbp
+ * @Date 16:50 2020-05-19
+ **/
+
+@Data
+public class BulkRequest {
+
+    private final KuduTable kuduTable;
+
+    private final String tableName;
+
+    private final String values;
+
+    public BulkRequest(KuduTable kuduTable, String tableName, String values) {
+        this.kuduTable = kuduTable;
+        this.tableName = tableName;
+        this.values = values;
+    }
 }

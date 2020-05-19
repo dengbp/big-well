@@ -1,13 +1,19 @@
 package com.yr.connector;
 
+import com.yr.connector.bulk.BulkProcessor;
+import com.yr.kudu.utils.KuduUtil;
+import com.yr.kudu.utils.RetryUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.connect.sink.SinkRecord;
 import org.apache.kafka.connect.sink.SinkTask;
+import org.apache.kudu.client.KuduClient;
+import org.apache.kudu.client.KuduException;
 
 import java.util.Collection;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 /**
  * @author dengbp
@@ -26,14 +32,69 @@ public class KuduSinkTask extends SinkTask {
         return new KuduSinkConnector().version();
     }
 
+    /**
+     * Description todo
+     * @param props
+     * @return void
+     * @Author dengbp
+     * @Date 14:46 2020-05-19
+     **/
+
     @Override
     public void start(Map<String, String> props) {
         log.info("KuduSinkTask begin start...");
-        client = new KuduClient(props);
-        KuduWriter.Builder builder = new KuduWriter.Builder(client);
+        KuduSinkConnectorConfig config = new KuduSinkConnectorConfig(props);
+        long flushTimeoutMs =
+                config.getLong(KuduSinkConnectorConfig.FLUSH_TIMEOUT_MS_CONFIG);
+        int maxBufferedRecords =
+                config.getInt(KuduSinkConnectorConfig.MAX_BUFFERED_RECORDS_CONFIG);
+        int batchSize =
+                config.getInt(KuduSinkConnectorConfig.BATCH_SIZE_CONFIG);
+        long lingerMs =
+                config.getLong(KuduSinkConnectorConfig.LINGER_MS_CONFIG);
+        long retryBackoffMs =
+                config.getLong(KuduSinkConnectorConfig.RETRY_BACKOFF_MS_CONFIG);
+        int maxRetry =
+                config.getInt(KuduSinkConnectorConfig.MAX_RETRIES_CONFIG);
+        BulkProcessor.BehaviorOnException behaviorOnException =
+                BulkProcessor.BehaviorOnException.forValue(
+                        config.getString(KuduSinkConnectorConfig.BEHAVIOR_ON_MALFORMED_DOCS_CONFIG)
+                );
+
+        long maxRetryBackoffMs =
+                RetryUtil.computeRetryWaitTimeInMillis(maxRetry, retryBackoffMs);
+        if (maxRetryBackoffMs > RetryUtil.MAX_RETRY_TIME_MS) {
+            log.warn("This connector uses exponential backoff with jitter for retries, "
+                            + "and using '{}={}' and '{}={}' results in an impractical but possible maximum "
+                            + "backoff time greater than {} hours.",
+                    KuduSinkConnectorConfig.MAX_RETRIES_CONFIG, maxRetry,
+                    KuduSinkConnectorConfig.RETRY_BACKOFF_MS_CONFIG, retryBackoffMs,
+                    TimeUnit.MILLISECONDS.toHours(maxRetryBackoffMs));
+        }
+
+        String topicTableMap = config.getString(KuduSinkConnectorConfig.TOPIC_TABLE_MAP);
+        String kuduMasters = config.getString(KuduSinkConnectorConfig.KUDU_MASTERS);
+        client = new KuduClient.KuduClientBuilder(kuduMasters).build();
+        try {
+            String tableList = config.getString(KuduSinkConnectorConfig.TABLE_LIST);
+            KuduUtil.init(client,tableList);
+        } catch (Exception e) {
+            e.printStackTrace();
+            log.error("初始化失败...");
+        }
+        KuduWriter.Builder builder = new KuduWriter.Builder(client)
+                .setFlushTimeoutMs(flushTimeoutMs)
+                .setMaxBufferedRecords(maxBufferedRecords)
+                .setBatchSize(batchSize)
+                .setLingerMs(lingerMs)
+                .setRetryBackoffMs(retryBackoffMs)
+                .setMaxRetry(maxRetry)
+                .setTopicToTable(topicTableMap)
+                .setBehaviorOnException(behaviorOnException);
         writer = builder.build();
         writer.start();
     }
+
 
     @Override
     public void put(Collection<SinkRecord> sinkRecords) {
@@ -54,7 +115,11 @@ public class KuduSinkTask extends SinkTask {
             writer.stop();
         }
         if (client != null) {
-            client.close();
+            try {
+                client.close();
+            } catch (KuduException e) {
+                e.printStackTrace();
+            }
         }
     }
 }

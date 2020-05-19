@@ -20,60 +20,57 @@ import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.utils.LogContext;
 import org.apache.kafka.common.utils.Time;
 import org.apache.kafka.connect.errors.ConnectException;
+import org.apache.kafka.connect.sink.SinkRecord;
+import org.apache.kudu.client.KuduClient;
+import org.apache.kudu.client.KuduException;
+import org.apache.kudu.client.KuduTable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
-/**
- * @param <R> record type
- * @param <B> bulk request type
- */
-public class BulkProcessor<R, B> {
+public class BulkProcessor {
 
   private static final Logger log = LoggerFactory.getLogger(BulkProcessor.class);
 
   private static final AtomicLong BATCH_ID_GEN = new AtomicLong();
 
   private final Time time;
-  private final BulkClient<R, B> bulkClient;
+  private final BulkClient<BulkRequest, BulkResponse> bulkClient;
   private final int maxBufferedRecords;
   private final int batchSize;
   private final long lingerMs;
   private final int maxRetries;
   private final long retryBackoffMs;
-  private final BehaviorOnMalformedDoc behaviorOnMalformedDoc;
+  private final BehaviorOnException behaviorOnException;
 
   private final Thread farmer;
   private final ExecutorService executor;
 
-  // thread-safe state, can be mutated safely without synchronization,
-  // but may be part of synchronized(this) wait() conditions so need to notifyAll() on changes
   private volatile boolean stopRequested = false;
   private volatile boolean flushRequested = false;
   private final AtomicReference<ConnectException> error = new AtomicReference<>();
 
-  // shared state, synchronized on (this), may be part of wait() conditions so need notifyAll() on
-  // changes
-  private final Deque<R> unsentRecords;
+  private final Deque<BulkRequest> unsentRecords;
   private int inFlightRecords = 0;
   private final LogContext logContext = new LogContext();
+  /** topic——>table */
+  private final Map<String,String> topicTableMap;
+  private final KuduClient client;
 
-  public BulkProcessor(
-      Time time,
-      BulkClient<R, B> bulkClient,
-      int maxBufferedRecords,
-      int maxInFlightRequests,
-      int batchSize,
-      long lingerMs,
-      int maxRetries,
-      long retryBackoffMs,
-      BehaviorOnMalformedDoc behaviorOnMalformedDoc
-  ) {
+    public BulkProcessor(
+            Time time,
+            BulkClient<BulkRequest, BulkResponse> bulkClient,
+            int maxBufferedRecords,
+            int batchSize,
+            long lingerMs,
+            int maxRetries,
+            long retryBackoffMs,
+            BehaviorOnException behaviorOnException,
+            Map<String, String> topicTableMap, KuduClient client) {
     this.time = time;
     this.bulkClient = bulkClient;
     this.maxBufferedRecords = maxBufferedRecords;
@@ -81,13 +78,13 @@ public class BulkProcessor<R, B> {
     this.lingerMs = lingerMs;
     this.maxRetries = maxRetries;
     this.retryBackoffMs = retryBackoffMs;
-    this.behaviorOnMalformedDoc = behaviorOnMalformedDoc;
-
+    this.behaviorOnException = behaviorOnException;
     unsentRecords = new ArrayDeque<>(maxBufferedRecords);
-
-    final ThreadFactory threadFactory = makeThreadFactory();
+      this.topicTableMap = topicTableMap;
+      this.client = client;
+      final ThreadFactory threadFactory = makeThreadFactory();
     farmer = threadFactory.newThread(farmerTask());
-    executor = Executors.newFixedThreadPool(maxInFlightRequests, threadFactory);
+    executor = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors()*2, threadFactory);
   }
 
   private ThreadFactory makeThreadFactory() {
@@ -117,7 +114,7 @@ public class BulkProcessor<R, B> {
     return new Runnable() {
       @Override
       public void run() {
-          log.debug("Starting farmer task thread");
+          log.info("Starting farmer task thread");
           try {
             while (!stopRequested) {
               submitBatchWhenReady();
@@ -130,78 +127,51 @@ public class BulkProcessor<R, B> {
     };
   }
 
-  // Visible for testing
   synchronized Future<BulkResponse> submitBatchWhenReady() throws InterruptedException {
     for (long waitStartTimeMs = time.milliseconds(), elapsedMs = 0;
          !stopRequested && !canSubmit(elapsedMs);
          elapsedMs = time.milliseconds() - waitStartTimeMs) {
-      // when linger time has already elapsed, we still have to ensure the other submission
-      // conditions hence the wait(0) in that case
       wait(Math.max(0, lingerMs - elapsedMs));
     }
-    // at this point, either stopRequested or canSubmit
     return stopRequested ? null : submitBatch();
   }
 
   private synchronized Future<BulkResponse> submitBatch() {
     final int numUnsentRecords = unsentRecords.size();
     assert numUnsentRecords > 0;
-    final int batchableSize = Math.min(batchSize, numUnsentRecords);
-    final List<R> batch = new ArrayList<>(batchableSize);
-    for (int i = 0; i < batchableSize; i++) {
+    final int batchAbleSize = Math.min(batchSize, numUnsentRecords);
+    final List<BulkRequest> batch = new ArrayList<>(batchAbleSize);
+    for (int i = 0; i < batchAbleSize; i++) {
       batch.add(unsentRecords.removeFirst());
     }
-    inFlightRecords += batchableSize;
-    log.debug(
+    inFlightRecords += batchAbleSize;
+    log.info(
         "Submitting batch of {} records; {} unsent and {} total in-flight records",
-        batchableSize,
+            batchAbleSize,
         numUnsentRecords,
         inFlightRecords
     );
     return executor.submit(new BulkTask(batch));
   }
 
-  /**
-   * Submission is possible when there are unsent records and:
-   * <ul>
-   * <li>flush is called, or</li>
-   * <li>the linger timeout passes, or</li>
-   * <li>there are sufficient records to fill a batch</li>
-   * </ul>
-   */
   private synchronized boolean canSubmit(long elapsedMs) {
     return !unsentRecords.isEmpty()
            && (flushRequested || elapsedMs >= lingerMs || unsentRecords.size() >= batchSize);
   }
 
-  /**
-   * Start concurrently creating and sending batched requests using the client.
-   */
   public void start() {
     farmer.start();
   }
 
-  /**
-   * Initiate shutdown.
-   *
-   * <p>Pending buffered records are not automatically flushed, so call {@link #flush(long)} before
-   * this method if this is desirable.
-   */
   public void stop() {
     log.debug("stop");
-    stopRequested = true; // this stops the farmer task
+    stopRequested = true;
     synchronized (this) {
-      // shutdown the pool under synchronization to avoid rejected submissions
       executor.shutdown();
       notifyAll();
     }
   }
 
-  /**
-   * Block upto {@code timeoutMs} till shutdown is complete.
-   *
-   * <p>This should only be called after a previous {@link #stop()} invocation.
-   */
   public void awaitStop(long timeoutMs) {
     assert stopRequested;
     try {
@@ -216,38 +186,58 @@ public class BulkProcessor<R, B> {
   }
 
   /**
-   * @return whether {@link #stop()} has been requested
-   */
+   * Description todo
+   * @param
+   * @return boolean
+   * @Author dengbp
+   * @Date 15:58 2020-05-19
+   **/
   public boolean isStopping() {
     return stopRequested;
   }
 
   /**
-   * @return whether any task failed with an error
-   */
+   * Description todo
+   * @param
+   * @return boolean
+   * @Author dengbp
+   * @Date 15:58 2020-05-19
+   **/
   public boolean isFailed() {
     return error.get() != null;
   }
 
-  /**
-   * @return {@link #isTerminal()} or {@link #isFailed()}
-   */
+ /**
+  * Description todo
+  * @param
+  * @return boolean
+  * @Author dengbp
+  * @Date 15:58 2020-05-19
+  **/
   public boolean isTerminal() {
     return isStopping() || isFailed();
   }
 
-  /**
-   * Throw a {@link ConnectException} if {@link #isStopping()}.
-   */
+ /**
+  * Description todo
+  * @param
+  * @return void
+  * @Author dengbp
+  * @Date 15:58 2020-05-19
+  **/
   public void throwIfStopping() {
     if (stopRequested) {
       throw new ConnectException("Stopping");
     }
   }
 
-  /**
-   * Throw the relevant {@link ConnectException} if {@link #isFailed()}.
-   */
+ /**
+  * Description todo
+  * @param
+  * @return void
+  * @Author dengbp
+  * @Date 15:58 2020-05-19
+  **/
   public void throwIfFailed() {
     if (isFailed()) {
       throw error.get();
@@ -255,21 +245,27 @@ public class BulkProcessor<R, B> {
   }
 
   /**
-   * {@link #throwIfFailed()} and {@link #throwIfStopping()}
-   */
+   * Description todo
+   * @param
+   * @return void
+   * @Author dengbp
+   * @Date 15:58 2020-05-19
+   **/
+
   public void throwIfTerminal() {
     throwIfFailed();
     throwIfStopping();
   }
 
-  /**
-   * Add a record, may block upto {@code timeoutMs} if at capacity with respect to
-   * {@code maxBufferedRecords}.
-   *
-   * <p>If any task has failed prior to or while blocked in the add, or if the timeout expires
-   * while blocked, {@link ConnectException} will be thrown.
-   */
-  public synchronized void add(R record, long timeoutMs) {
+ /**
+  * Description todo
+  * @param record
+ * @param timeoutMs
+  * @return void
+  * @Author dengbp
+  * @Date 15:58 2020-05-19
+  **/
+  public synchronized void add(SinkRecord record, long timeoutMs) {
     throwIfTerminal();
 
     int numBufferedRecords = bufferedRecords();
@@ -300,17 +296,26 @@ public class BulkProcessor<R, B> {
     } else {
       log.trace("Adding record to queue");
     }
-
-    unsentRecords.addLast(record);
-    notifyAll();
+    try {
+      String tableName = topicTableMap.get(record.topic());
+      KuduTable table = client.openTable(tableName);
+      BulkRequest request = new BulkRequest(table,tableName,record.value().toString());
+      unsentRecords.addLast(request);
+      notifyAll();
+    } catch (KuduException e) {
+      e.printStackTrace();
+    }
   }
 
-  /**
-   * Request a flush and block upto {@code timeoutMs} until all pending records have been flushed.
-   *
-   * <p>If any task has failed prior to or during the flush, {@link ConnectException} will be
-   * thrown with that error.
-   */
+ /**
+  * Description todo
+  * @param timeoutMs
+  * @return void
+  * @Author dengbp
+  * @Date 15:59 2020-05-19
+  **/
+
+
   public void flush(long timeoutMs) {
     final long flushStartTimeMs = time.milliseconds();
     try {
@@ -362,9 +367,9 @@ public class BulkProcessor<R, B> {
 
     final long batchId = BATCH_ID_GEN.incrementAndGet();
 
-    final List<R> batch;
+    final List<BulkRequest> batch;
 
-    BulkTask(List<R> batch) {
+    BulkTask(List<BulkRequest> batch) {
       this.batch = batch;
     }
 
@@ -383,46 +388,14 @@ public class BulkProcessor<R, B> {
 
     private BulkResponse execute() throws Exception {
       final long startTime = System.currentTimeMillis();
-      final B bulkReq;
-      try {
-        bulkReq = bulkClient.bulkRequest(batch);
-      } catch (Exception e) {
-        log.error(
-            "Failed to create bulk request from batch {} of {} records",
-            batchId,
-            batch.size(),
-            e
-        );
-        throw e;
-      }
       final int maxAttempts = maxRetries + 1;
       for (int attempts = 1, retryAttempts = 0; true; ++attempts, ++retryAttempts) {
         boolean retriable = true;
         try {
           log.trace("Executing batch {} of {} records with attempt {}/{}",
                   batchId, batch.size(), attempts, maxAttempts);
-          final BulkResponse bulkRsp = bulkClient.execute(bulkReq);
-          if (bulkRsp.isSucceeded()) {
-            if (log.isDebugEnabled()) {
-              log.debug(
-                  "Completed batch {} of {} records with attempt {}/{} in {} ms",
-                  batchId,
-                  batch.size(),
-                  attempts,
-                  maxAttempts,
-                  System.currentTimeMillis() - startTime
-              );
-            }
-            return bulkRsp;
-          } else if (responseContainsMalformedDocError(bulkRsp)) {
-            retriable = bulkRsp.isRetriable();
-            handleMalformedDoc(bulkRsp);
-            return bulkRsp;
-          } else {
-            // for all other errors, throw the error up
-            retriable = bulkRsp.isRetriable();
-            throw new ConnectException("Bulk request failed: " + bulkRsp.getErrorInfo());
-          }
+          final BulkResponse bulkRsp = (BulkResponse) bulkClient.execute(batch);
+          return bulkRsp;
         } catch (Exception e) {
           if (retriable && attempts < maxAttempts) {
             long sleepTimeMs = RetryUtil.computeRandomRetryWaitTimeInMillis(retryAttempts,
@@ -441,9 +414,7 @@ public class BulkProcessor<R, B> {
     }
 
     private void handleMalformedDoc(BulkResponse bulkRsp) {
-      // if the elasticsearch request failed because of a malformed document,
-      // the behavior is configurable.
-      switch (behaviorOnMalformedDoc) {
+      switch (behaviorOnException) {
         case IGNORE:
           log.debug("Encountered an illegal document error when executing batch {} of {}"
                   + " records. Ignoring and will not index record. Error was {}",
@@ -459,8 +430,8 @@ public class BulkProcessor<R, B> {
         default:
           throw new RuntimeException(String.format(
               "Unknown value for %s enum: %s",
-              BehaviorOnMalformedDoc.class.getSimpleName(),
-              behaviorOnMalformedDoc
+                  BehaviorOnException.class.getSimpleName(),
+                  behaviorOnException
           ));
       }
     }
@@ -483,9 +454,6 @@ public class BulkProcessor<R, B> {
     stop();
   }
 
-  /**
-   * @return sum of unsent and in-flight record counts
-   */
   public synchronized int bufferedRecords() {
     return unsentRecords.size() + inFlightRecords;
   }
@@ -498,14 +466,13 @@ public class BulkProcessor<R, B> {
     }
   }
 
-  public enum BehaviorOnMalformedDoc {
+  public enum BehaviorOnException {
     IGNORE,
     WARN,
     FAIL;
 
-    public static final BehaviorOnMalformedDoc DEFAULT = FAIL;
+    public static final BehaviorOnException DEFAULT = FAIL;
 
-    // Want values for "behavior.on.malformed.doc" property to be case-insensitive
     public static final ConfigDef.Validator VALIDATOR = new ConfigDef.Validator() {
       private final ConfigDef.ValidString validator = ConfigDef.ValidString.in(names());
 
@@ -517,7 +484,6 @@ public class BulkProcessor<R, B> {
         validator.ensureValid(name, value);
       }
 
-      // Overridden here so that ConfigDef.toEnrichedRst shows possible values correctly
       @Override
       public String toString() {
         return validator.toString();
@@ -526,7 +492,7 @@ public class BulkProcessor<R, B> {
     };
 
     public static String[] names() {
-      BehaviorOnMalformedDoc[] behaviors = values();
+      BehaviorOnException[] behaviors = values();
       String[] result = new String[behaviors.length];
 
       for (int i = 0; i < behaviors.length; i++) {
@@ -536,7 +502,7 @@ public class BulkProcessor<R, B> {
       return result;
     }
 
-    public static BehaviorOnMalformedDoc forValue(String value) {
+    public static BehaviorOnException forValue(String value) {
       return valueOf(value.toUpperCase(Locale.ROOT));
     }
 

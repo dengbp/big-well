@@ -1,14 +1,13 @@
 package com.yr.connector;
 
-import com.yr.kudu.service.KuduOperat;
-import com.yr.pojo.TableValues;
+import com.yr.connector.bulk.BulkProcessor;
+import com.yr.connector.bulk.KuduOperate;
+import com.yr.kudu.session.SessionManager;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.kafka.connect.json.JsonConverter;
+import org.apache.kafka.common.utils.SystemTime;
 import org.apache.kafka.connect.sink.SinkRecord;
-import org.apache.kafka.connect.storage.Converter;
-import org.apache.kudu.client.KuduException;
+import org.apache.kudu.client.KuduClient;
 
-import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 /**
@@ -21,31 +20,42 @@ import java.util.*;
 public class KuduWriter {
 
     private final KuduClient client;
-    private final String type;
-    private final boolean ignoreKey;
-    private final Set<String> ignoreKeyTopics;
-    private final boolean ignoreSchema;
-    private final Set<String> ignoreSchemaTopics;
     private final Map<String, String> topicToTableMap;
     private final long flushTimeoutMs;
     private final BulkProcessor bulkProcessor;
-    private final boolean dropInvalidMessage;
+    private final SessionManager sessionManager;
+
+    public Map<String, String> getTopicTableMap() {
+        return topicTableMap;
+    }
+
     /** topic——>table */
     private final Map<String,String> topicTableMap;
+    private final BulkProcessor.BehaviorOnException behaviorOnException;
 
 
-    private KuduWriter(KuduClient client, String type, boolean ignoreKey, Set<String> ignoreKeyTopics, boolean ignoreSchema, Set<String> ignoreSchemaTopics, Map<String, String> topicToTableMap, long flushTimeoutMs, boolean dropInvalidMessage, Map<String,String> topicTableMap) {
+    private KuduWriter(KuduClient client, Map<String, String> topicToTableMap, long flushTimeoutMs,
+                       int maxBufferedRecords,
+                       int batchSize,
+                       long lingerMs,
+                       int maxRetries,
+                       long retryBackoffMs,Map<String, String> topicTableMap, BulkProcessor.BehaviorOnException behaviorOnException) {
         this.client = client;
-        this.type = type;
-        this.ignoreKey = ignoreKey;
-        this.ignoreKeyTopics = ignoreKeyTopics;
-        this.ignoreSchema = ignoreSchema;
-        this.ignoreSchemaTopics = ignoreSchemaTopics;
         this.topicToTableMap = topicToTableMap;
         this.flushTimeoutMs = flushTimeoutMs;
         this.topicTableMap = topicTableMap;
-        this.bulkProcessor = new BulkProcessor();
-        this.dropInvalidMessage = dropInvalidMessage;
+        this.behaviorOnException = behaviorOnException;
+        this.sessionManager = new SessionManager(client);
+        this.bulkProcessor  = new BulkProcessor(
+                new SystemTime(),
+                new BulkKuduClient(new KuduOperate(), sessionManager),
+                maxBufferedRecords,
+                batchSize,
+                lingerMs,
+                maxRetries,
+                retryBackoffMs,
+                behaviorOnException,
+                topicTableMap, client);
     }
 
     public void start() {
@@ -54,17 +64,7 @@ public class KuduWriter {
 
     public void write(Collection<SinkRecord> records) {
         for (SinkRecord record : records){
-            log.info("record:{}",record.value()+"");
-            String tableName = topicTableMap.get(record.topic());
-            try {
-                log.info("tableName:{}",tableName);
-                KuduOperat.insert(new TableValues(tableName,record.value().toString()));
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            } catch (KuduException e) {
-                e.printStackTrace();
-                log.error("同步异常数据：{}",record.toString());
-            }
+            bulkProcessor.add(record,flushTimeoutMs);
         }
     }
 
@@ -79,52 +79,28 @@ public class KuduWriter {
 
 
     public static class Builder {
-        private final KuduClient client;
-        private String type;
-        private boolean useCompactMapEntries = true;
-        private boolean ignoreKey = false;
-        private Set<String> ignoreKeyTopics = Collections.emptySet();
-        private boolean ignoreSchema = false;
-        private Set<String> ignoreSchemaTopics = Collections.emptySet();
-        private Map<String, String> topicToTableMap = new HashMap<>();
+        private String topicToTable;
         private long flushTimeoutMs;
         private int maxBufferedRecords;
-        private int maxInFlightRequests;
         private int batchSize;
         private long lingerMs;
         private int maxRetry;
         private long retryBackoffMs;
-        private boolean dropInvalidMessage;
+        private BulkProcessor.BehaviorOnException behaviorOnException;
+        private final KuduClient client;
 
         public Builder(KuduClient client) {
             this.client = client;
         }
 
-        public Builder setType(String type) {
-            this.type = type;
+
+
+        public Builder setTopicToTable(String topicToTable) {
+            this.topicToTable = topicToTable;
             return this;
         }
 
-        public Builder setIgnoreKey(boolean ignoreKey, Set<String> ignoreKeyTopics) {
-            this.ignoreKey = ignoreKey;
-            this.ignoreKeyTopics = ignoreKeyTopics;
-            return this;
-        }
-
-        public Builder setIgnoreSchema(boolean ignoreSchema, Set<String> ignoreSchemaTopics) {
-            this.ignoreSchema = ignoreSchema;
-            this.ignoreSchemaTopics = ignoreSchemaTopics;
-            return this;
-        }
-
-        public Builder setCompactMapEntries(boolean useCompactMapEntries) {
-            this.useCompactMapEntries = useCompactMapEntries;
-            return this;
-        }
-
-
-
-        public Builder setFlushTimoutMs(long flushTimeoutMs) {
+        public Builder setFlushTimeoutMs(long flushTimeoutMs) {
             this.flushTimeoutMs = flushTimeoutMs;
             return this;
         }
@@ -134,10 +110,6 @@ public class KuduWriter {
             return this;
         }
 
-        public Builder setMaxInFlightRequests(int maxInFlightRequests) {
-            this.maxInFlightRequests = maxInFlightRequests;
-            return this;
-        }
 
         public Builder setBatchSize(int batchSize) {
             this.batchSize = batchSize;
@@ -159,21 +131,28 @@ public class KuduWriter {
             return this;
         }
 
-        public Builder setDropInvalidMessage(boolean dropInvalidMessage) {
-            this.dropInvalidMessage = dropInvalidMessage;
+
+        public Builder setBehaviorOnException(BulkProcessor.BehaviorOnException behaviorOnException) {
+            this.behaviorOnException = behaviorOnException;
             return this;
         }
 
 
+
+
         public KuduWriter build() {
-            String[] tableMaps = client.getProps().get("topic.table.map").split(",");
-            Map<String,String> map = new HashMap();
+            String[] tableMaps = topicToTable.split(",");
+            Map<String,String> topicToTableMap = new HashMap();
             for (String table : tableMaps){
-                map.put(table.split(":")[0],table.split(":")[1]);
+                topicToTableMap.put(table.split(":")[0],table.split(":")[1]);
             }
-            return new KuduWriter(client,type,ignoreKey, ignoreKeyTopics,ignoreSchema,
-                    ignoreSchemaTopics, topicToTableMap,flushTimeoutMs,dropInvalidMessage,
-                    map);
+            return new KuduWriter(client, topicToTableMap,flushTimeoutMs,
+                    maxBufferedRecords,
+                    batchSize,
+                    lingerMs,
+                    maxRetry,
+                    retryBackoffMs,
+                    topicToTableMap, behaviorOnException);
         }
     }
 }

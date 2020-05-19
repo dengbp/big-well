@@ -1,4 +1,4 @@
-package com.yr.kudu.constant;
+package com.yr.kudu.session;
 
 import java.util.HashMap;
 import java.util.Map;
