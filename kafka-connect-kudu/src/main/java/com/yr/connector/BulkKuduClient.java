@@ -45,10 +45,6 @@ public class BulkKuduClient implements BulkClient<BulkRequest,BulkResponse> {
                     session.flush();
                     batch[0] = 0;
                 }
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-                log.error("insert table[{}]error,message:",req.getTableName(),req.getValues());
-                response[0] = BulkResponse.failure(true,e.getMessage());
             } catch (KuduException e) {
                 e.printStackTrace();
                 log.error("insert table[{}]error,message:",req.getTableName(),req.getValues());

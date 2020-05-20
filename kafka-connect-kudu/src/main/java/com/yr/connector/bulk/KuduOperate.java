@@ -1,11 +1,13 @@
 package com.yr.connector.bulk;
 
 
+import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import com.yr.kudu.session.SessionManager;
 import com.yr.kudu.session.TableTypeConstantMap;
 import com.yr.kudu.utils.KuduUtil;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.collections4.map.CaseInsensitiveMap;
 import org.apache.kudu.client.*;
 
 import java.util.Map;
@@ -28,8 +30,8 @@ public class KuduOperate {
      * @Date 17:15 2020-05-18
      **/
 
-    public  void insert(KuduSession session, BulkRequest request) throws InterruptedException, KuduException {
-        JSONObject json = JSONObject.parseObject(request.getValues());
+    public  void insert(KuduSession session, BulkRequest request) throws KuduException {
+        CaseInsensitiveMap map = JSON.parseObject(request.getValues(),CaseInsensitiveMap.class);
         String tableName = request.getTableName();
         KuduTable kuduTable = request.getKuduTable();
         Insert insert = kuduTable.newInsert();
@@ -39,7 +41,7 @@ public class KuduOperate {
         for(int i = 0; i < objects.length; i++){
             String key = objects[i].toString();
             String type = kuduTableType.get(key);
-            KuduUtil.typeConversion(json, row, key, type);
+            KuduUtil.typeConversion(map, row, key, type);
         }
         session.apply(insert);
         judge(session);
