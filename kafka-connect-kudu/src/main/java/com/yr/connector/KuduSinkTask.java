@@ -58,7 +58,7 @@ public class KuduSinkTask extends SinkTask {
                 config.getInt(KuduSinkConnectorConfig.MAX_RETRIES_CONFIG);
         BulkProcessor.BehaviorOnException behaviorOnException =
                 BulkProcessor.BehaviorOnException.forValue(
-                        config.getString(KuduSinkConnectorConfig.BEHAVIOR_ON_MALFORMED_DOCS_CONFIG)
+                        config.getString(KuduSinkConnectorConfig.BEHAVIOR_ON_MALFORMED_CONFIG)
                 );
 
         long maxRetryBackoffMs =

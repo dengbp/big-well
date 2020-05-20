@@ -1,10 +1,15 @@
 package com.yr.connector;
 
+import com.yr.connector.bulk.BulkProcessor;
 import com.yr.kudu.utils.KuduUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.common.config.AbstractConfig;
 import org.apache.kafka.common.config.ConfigDef;
-
+import org.apache.kafka.common.config.AbstractConfig;
+import org.apache.kafka.common.config.ConfigDef;
+import org.apache.kafka.common.config.ConfigDef.Importance;
+import org.apache.kafka.common.config.ConfigDef.Type;
+import org.apache.kafka.common.config.ConfigDef.Width;
 import java.util.Map;
 
 /**
@@ -16,27 +21,14 @@ import java.util.Map;
 @Slf4j
 public class KuduSinkConnectorConfig  extends AbstractConfig {
 
-    public static final String CONNECTION_URL_CONFIG = "connection.url";
-    public static final String CONNECTION_USERNAME_CONFIG = "connection.username";
-    public static final String CONNECTION_PASSWORD_CONFIG = "connection.password";
+    private static final String FLUSH_TIMEOUT_MS_DOC = "kudu config";
     public static final String BATCH_SIZE_CONFIG = "batch.size";
-    public static final String MAX_IN_FLIGHT_REQUESTS_CONFIG = "max.in.flight.requests";
     public static final String MAX_BUFFERED_RECORDS_CONFIG = "max.buffered.records";
     public static final String LINGER_MS_CONFIG = "linger.ms";
     public static final String FLUSH_TIMEOUT_MS_CONFIG = "flush.timeout.ms";
     public static final String MAX_RETRIES_CONFIG = "max.retries";
     public static final String RETRY_BACKOFF_MS_CONFIG = "retry.backoff.ms";
-    public static final String KEY_IGNORE_CONFIG = "key.ignore";
-    public static final String TOPIC_KEY_IGNORE_CONFIG = "topic.key.ignore";
-    public static final String DROP_INVALID_MESSAGE_CONFIG = "drop.invalid.message";
-    public static final String COMPACT_MAP_ENTRIES_CONFIG = "compact.map.entries";
-    public static final String MAX_CONNECTION_IDLE_TIME_MS_CONFIG = "max.connection.idle.time.ms";
-    public static final String CONNECTION_TIMEOUT_MS_CONFIG = "connection.timeout.ms";
-    public static final String READ_TIMEOUT_MS_CONFIG = "read.timeout.ms";
-    public static final String CONNECTION_COMPRESSION_CONFIG = "connection.compression";
-    public static final String BEHAVIOR_ON_NULL_VALUES_CONFIG = "behavior.on.null.values";
-    public static final String BEHAVIOR_ON_MALFORMED_DOCS_CONFIG = "behavior.on.exception";
-    public static final String WRITE_METHOD_CONFIG = "write.method";
+    public static final String BEHAVIOR_ON_MALFORMED_CONFIG = "behavior.on.exception";
     public static final String TOPIC_TABLE_MAP = "topic.table.map";
     public static final String KUDU_MASTERS = "kudu.masters";
     public static final String TABLE_LIST = "table.list";
@@ -45,7 +37,114 @@ public class KuduSinkConnectorConfig  extends AbstractConfig {
 
     private static ConfigDef baseConfigDef() {
         final ConfigDef configDef = new ConfigDef();
+        definePro(configDef);
         return configDef;
+    }
+
+    private static void definePro(ConfigDef configDef){
+        final String group = "connector";
+        int order = 0;
+        configDef.define(
+                BATCH_SIZE_CONFIG,
+                Type.INT,
+                5000,
+                Importance.HIGH,
+                FLUSH_TIMEOUT_MS_DOC,
+                group,
+                ++order,
+                Width.LONG,
+                "Flush Timeout (ms)"
+        ).define(
+                MAX_BUFFERED_RECORDS_CONFIG,
+                Type.INT,
+                8000,
+                Importance.HIGH,
+                FLUSH_TIMEOUT_MS_DOC,
+                group,
+                ++order,
+                Width.LONG,
+                "Flush Timeout (ms)"
+        ).define(
+                LINGER_MS_CONFIG,
+                Type.LONG,
+                1000L,
+                Importance.HIGH,
+                FLUSH_TIMEOUT_MS_DOC,
+                group,
+                ++order,
+                Width.LONG,
+                "Flush Timeout (ms)"
+        ).define(
+                MAX_RETRIES_CONFIG,
+                Type.INT,
+                3,
+                Importance.HIGH,
+                FLUSH_TIMEOUT_MS_DOC,
+                group,
+                ++order,
+                Width.SHORT,
+                "Flush Timeout (ms)"
+        ).define(
+                RETRY_BACKOFF_MS_CONFIG,
+                Type.LONG,
+                1000L,
+                Importance.HIGH,
+                FLUSH_TIMEOUT_MS_DOC,
+                group,
+                ++order,
+                Width.LONG,
+                "Flush Timeout (ms)"
+        ).define(
+                FLUSH_TIMEOUT_MS_CONFIG,
+                Type.LONG,
+                10000L,
+                Importance.HIGH,
+                FLUSH_TIMEOUT_MS_DOC,
+                group,
+                ++order,
+                Width.SHORT,
+                "Flush Timeout (ms)"
+        ).define(
+                TABLE_LIST,
+                Type.STRING,
+                "",
+                Importance.HIGH,
+                FLUSH_TIMEOUT_MS_DOC,
+                group,
+                ++order,
+                Width.SHORT,
+                "Flush Timeout (ms)"
+        ).define(
+                KUDU_MASTERS,
+                Type.STRING,
+                "",
+                Importance.HIGH,
+                FLUSH_TIMEOUT_MS_DOC,
+                group,
+                ++order,
+                Width.SHORT,
+                "Flush Timeout (ms)"
+        ).define(
+                TOPIC_TABLE_MAP,
+                Type.STRING,
+                "",
+                Importance.HIGH,
+                FLUSH_TIMEOUT_MS_DOC,
+                group,
+                ++order,
+                Width.SHORT,
+                "Flush Timeout (ms)"
+        ).define(
+                BEHAVIOR_ON_MALFORMED_CONFIG,
+                Type.STRING,
+                BulkProcessor.BehaviorOnException.DEFAULT.toString(),
+                Importance.LOW,
+                BulkProcessor.BehaviorOnException.VALIDATOR.toString(),
+                group,
+                ++order,
+                Width.SHORT,
+                "Flush Timeout (ms)"
+        );
     }
 
     public KuduSinkConnectorConfig(Map<?, ?> originals) {
