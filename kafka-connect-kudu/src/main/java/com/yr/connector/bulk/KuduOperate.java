@@ -31,6 +31,7 @@ public class KuduOperate {
      **/
     public  void operation(KuduSession session, BulkRequest request) throws KuduException, ParseException {
         BingLog bingLog = JSON.parseObject(request.getValues(), BingLog.class);
+        log.info("request.getValues()={}",request.getValues());
         CaseInsensitiveMap mysqlSource;
         Operation operation;
         String tableName = request.getTableName();

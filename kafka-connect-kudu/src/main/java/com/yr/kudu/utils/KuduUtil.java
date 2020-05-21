@@ -1,6 +1,7 @@
 package com.yr.kudu.utils;
 
 import com.yr.kudu.arithmetic.KMPArithmetic;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.map.CaseInsensitiveMap;
 import org.apache.kudu.client.KuduClient;
 import org.apache.kudu.client.PartialRow;
@@ -15,6 +16,7 @@ import static java.math.BigDecimal.valueOf;
  * @version 1.0
  * @date 2020/5/15 4:34 下午
  */
+@Slf4j
 public class KuduUtil {
 
 
@@ -50,6 +52,7 @@ public class KuduUtil {
         {
             String tempKey = key.split(KUDUDATESTRING)[0];
             Object tempObject = map.get(tempKey);
+            log.info("String tempKey= {} ,Object tempObject = {}",tempKey,tempObject);
             if(tempObject == null){
                 row.isNull(key);
                 return;
@@ -99,6 +102,7 @@ public class KuduUtil {
                     break;
                 case KUDUDATE:
                     String dateValue = value.toString();
+                    log.info("String dateValue = {}",dateValue);
                     Long millisecond;
                     // TIMESTAMP 类型 推入数据格式为 2020-02-02T19:19:19Z 特殊处理
                     if(-1 != KMPArithmetic.kmp(dateValue,T,new int[T.length()])){
