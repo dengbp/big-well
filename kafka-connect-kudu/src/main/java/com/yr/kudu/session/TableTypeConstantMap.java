@@ -11,7 +11,7 @@ import java.util.Map;
  * @date 2020/5/15 6:26 下午
  */
 public class TableTypeConstantMap {
-    private TableTypeConstantMap(){};
+    private TableTypeConstantMap(){}
 
     private static TableTypeConstantMap  tableTypeConstantMap;
     /**

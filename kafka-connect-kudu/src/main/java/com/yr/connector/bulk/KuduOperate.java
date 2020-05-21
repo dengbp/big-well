@@ -33,7 +33,7 @@ public class KuduOperate {
         BingLog bingLog = JSON.parseObject(request.getValues(), BingLog.class);
         CaseInsensitiveMap mysqlSource;
         Operation operation;
-        String tableName = bingLog.getSource().get("table");
+        String tableName = request.getTableName();
         KuduTable kuduTable = request.getKuduTable();
         if(BingLog.DELETE.equals(bingLog.getOp())){
             mysqlSource = bingLog.getBefore();

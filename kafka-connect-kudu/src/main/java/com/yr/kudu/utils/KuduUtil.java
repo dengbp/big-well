@@ -43,7 +43,7 @@ public class KuduUtil {
      * @param key kudu的列名
      * @param type kudu的类型
      */
-    public static void typeConversion(CaseInsensitiveMap map, PartialRow row, @NotNull String key, @NotNull String type) throws ParseException {
+    public static void typeConversion(@NotNull CaseInsensitiveMap map,@NotNull PartialRow row, @NotNull String key, @NotNull String type) throws ParseException {
         Object value = map.get(key);
         // 判断是否为date，datetime，TIMESTAMP 类型的string列
         if(STRING.equals(type) && -1 != KMPArithmetic.kmp(key,KUDUDATESTRING,new int[KUDUDATESTRING.length()]))
