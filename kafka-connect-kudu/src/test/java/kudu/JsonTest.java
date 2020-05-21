@@ -3,6 +3,7 @@ package kudu;
 
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
+import com.yr.connector.bulk.BulkRequest;
 import com.yr.connector.bulk.KuduOperate;
 import com.yr.kudu.pojo.BingLog;
 import com.yr.kudu.session.TableTypeConstantMap;
@@ -135,7 +136,7 @@ public class JsonTest {
                 "    \"pay_serial_id\": \"LOD00201804261542090026920000000\",\n" +
                 "    \"Create_date\": 1524757329000,\n" +
                 "    \"State_date\": 1524757329000,\n" +
-                "    \"syn_time\": \"2020-05-21T05:25:55Z\",\n" +
+                "    \"syn_time\": \"2020-05-21 05:25:55\",\n" +
                 "    \"bill_date_start\": \"20170821000000\",\n" +
                 "    \"bill_date_end\": \"20170821235959\",\n" +
                 "    \"lfree\": \"0.00\",\n" +
@@ -234,7 +235,7 @@ public class JsonTest {
                 "    \"table\": \"tb_uhome_acct_item_tmp_1\",\n" +
                 "    \"query\": null\n" +
                 "  },\n" +
-                "  \"op\": \"c\",\n" +
+                "  \"op\": \"u\",\n" +
                 "  \"ts_ms\": 1590039353486\n" +
                 "}";
 
@@ -243,31 +244,13 @@ public class JsonTest {
         KuduSession session = client.newSession();
         KuduUtil.init(client,"tb_uhome_acct_item");
 
-        BingLog bingLog = JSON.parseObject(str, BingLog.class);
+
 //        log.info("request.getValues()={}",str.getValues());
-        CaseInsensitiveMap mysqlSource;
-        Operation operation;
         String tableName = "tb_uhome_acct_item";
         KuduTable kuduTable = client.openTable("tb_uhome_acct_item");
-        if(BingLog.DELETE.equals(bingLog.getOp())){
-            mysqlSource = bingLog.getBefore();
-            operation = kuduTable.newDelete();
-        } else if(BingLog.UPDATE.equals(bingLog.getOp())) {
-            mysqlSource = bingLog.getAfter();
-            operation = kuduTable.newUpdate();
-        } else {
-            mysqlSource = bingLog.getAfter();
-            operation = kuduTable.newInsert();
-        }
-        PartialRow row = operation.getRow();
-        Map<String,String> kuduTableType = TableTypeConstantMap.kuduTables.get(tableName);
-        Object[] objects = kuduTableType.keySet().toArray();
-        for(int i = 0; i < objects.length; i++){
-            String key = objects[i].toString();
-            String type = kuduTableType.get(key);
-            KuduUtil.typeConversion(mysqlSource, row, key, type);
-        }
-        session.apply(operation);
+        BulkRequest bulkRequest = new BulkRequest(kuduTable, tableName, str);
+        new KuduOperate().operation(session,bulkRequest);
+
         System.out.println();
 //        judge(session);
     }

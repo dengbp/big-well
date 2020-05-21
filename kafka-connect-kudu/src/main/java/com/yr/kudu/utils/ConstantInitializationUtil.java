@@ -1,11 +1,11 @@
 package com.yr.kudu.utils;
 
-import com.yr.kudu.session.SessionManager;
 import com.yr.kudu.session.TableTypeConstantMap;
 import org.apache.kudu.ColumnSchema;
 import org.apache.kudu.client.KuduClient;
 import org.apache.kudu.client.KuduTable;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -29,10 +29,15 @@ public class ConstantInitializationUtil {
             KuduTable kuduTable = client.openTable(s);
             List<ColumnSchema> columns = kuduTable.getSchema().getColumns();
             Map<String, String> stringMapHashMap = new HashMap<>(columns.size());
+            List<String> primaryKeys = new ArrayList<>();
             for (ColumnSchema c : columns){
+                if(c.isKey()){
+                    primaryKeys.add(c.getName());
+                }
                 stringMapHashMap.put(c.getName(), c.getType().getName());
             }
             TableTypeConstantMap.kuduTables.put(s,stringMapHashMap);
+            TableTypeConstantMap.kuduPrimaryKey.put(s,primaryKeys);
         }
     }
 }

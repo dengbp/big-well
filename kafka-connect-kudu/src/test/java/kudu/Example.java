@@ -167,7 +167,7 @@ public class Example {
         try {
             createExampleTable(client, tableName);
 
-            int numRows = 1500000;
+            int numRows = 1;
             insertRows(client, tableName, numRows);
 
             // Alter the table, adding a column with a default value.

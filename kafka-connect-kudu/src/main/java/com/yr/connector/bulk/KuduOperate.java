@@ -10,6 +10,7 @@ import org.apache.commons.collections4.map.CaseInsensitiveMap;
 import org.apache.kudu.client.*;
 
 import java.text.ParseException;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -34,25 +35,36 @@ public class KuduOperate {
         log.info("request.getValues()={}",request.getValues());
         CaseInsensitiveMap mysqlSource;
         Operation operation;
+        // 判断是否为删除
+        boolean flag;
         String tableName = request.getTableName();
         KuduTable kuduTable = request.getKuduTable();
         if(BingLog.DELETE.equals(bingLog.getOp())){
             mysqlSource = bingLog.getBefore();
             operation = kuduTable.newDelete();
+            flag = true;
         } else if(BingLog.UPDATE.equals(bingLog.getOp())) {
             mysqlSource = bingLog.getAfter();
             operation = kuduTable.newUpdate();
+            flag = false;
         } else {
             mysqlSource = bingLog.getAfter();
             operation = kuduTable.newInsert();
+            flag = false;
         }
         PartialRow row = operation.getRow();
         Map<String,String> kuduTableType = TableTypeConstantMap.kuduTables.get(tableName);
-        Object[] objects = kuduTableType.keySet().toArray();
-        for(int i = 0; i < objects.length; i++){
-            String key = objects[i].toString();
-            String type = kuduTableType.get(key);
-            KuduUtil.typeConversion(mysqlSource, row, key, type);
+       // 当是删除时只要主键信息 不需要非主键信息 加入非主键信息删除失败
+        if(flag){
+            List<String> primaryKeys = TableTypeConstantMap.kuduPrimaryKey.get(tableName);
+            KuduUtil.deleteTypeConversion(mysqlSource,row,kuduTableType,primaryKeys);
+        } else {
+            Object[] objects = kuduTableType.keySet().toArray();
+            for(int i = 0; i < objects.length; i++){
+                String key = objects[i].toString();
+                String type = kuduTableType.get(key);
+                KuduUtil.typeConversion(mysqlSource, row, key, type);
+            }
         }
         session.apply(operation);
         judge(session);
