@@ -32,9 +32,16 @@ public class KuduUtil {
         ConstantInitializationUtil.initialization(client,tableName);
     }
 
+    /**
+     *  mysql数据到kudu数据类型转换
+     * @param map mysql原数据 map<列名,值>
+     * @param row
+     * @param key kudu的列名
+     * @param type kudu的类型
+     */
     public static void typeConversion(CaseInsensitiveMap map, PartialRow row, @NotNull String key, @NotNull String type) {
         Object value = map.get(key);
-        int i = KUDUDATESTRING.length() - 1;
+        // 判断是否为date，datetime，TIMESTAMP 类型的string列
         if(STRING.equals(type) && -1 != KMPArithmetic.kmp(key,KUDUDATESTRING,new int[KUDUDATESTRING.length()]))
         {
             String tempKey = key.split(KUDUDATESTRING)[0];
@@ -46,8 +53,10 @@ public class KuduUtil {
             Long millisecond =Long.parseLong(tempValue.toString());
             String dateString = DateUtil.millisecondFormat(millisecond, "yyyy-MM-dd HH:mm:ss");
             row.addString(key,dateString);
+            //为空处理
         } else if(isNullObject(value)) {
             row.isNull(key);
+//            类型转换
         } else {
             switch (type){
                 case BYTE:
