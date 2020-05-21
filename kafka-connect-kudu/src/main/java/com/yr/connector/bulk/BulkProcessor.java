@@ -299,7 +299,7 @@ public class BulkProcessor {
     try {
       String tableName = topicTableMap.get(record.topic());
       KuduTable table = client.openTable(tableName);
-      BulkRequest request = new BulkRequest(table,tableName, operatorType, record.value().toString());
+      BulkRequest request = new BulkRequest(table,tableName, record.value().toString());
       unsentRecords.addLast(request);
       notifyAll();
     } catch (KuduException e) {
