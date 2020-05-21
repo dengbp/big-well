@@ -1,13 +1,10 @@
 package com.yr.kudu.utils;
 
-import com.alibaba.fastjson.JSONObject;
-import com.yr.kudu.session.SessionManager;
+import com.yr.kudu.arithmetic.KMPArithmetic;
 import org.apache.commons.collections4.map.CaseInsensitiveMap;
 import org.apache.kudu.client.KuduClient;
 import org.apache.kudu.client.PartialRow;
 import org.jetbrains.annotations.NotNull;
-
-import java.math.BigDecimal;
 
 import static java.math.BigDecimal.valueOf;
 
@@ -19,41 +16,66 @@ import static java.math.BigDecimal.valueOf;
 public class KuduUtil {
 
 
+    public static final String KUDUDATESTRING = "_kudu_date_string";
+    public static final String BYTE = "int8";
+    public static final String SHORT = "int16";
+    public static final String INT = "int32";
+    public static final String LONG = "int64";
+    public static final String KUDUDATE = "unixtime_micros";
+    public static final String STRING = "string";
+    public static final String DECIMAL = "decimal";
+    public static final String BOOL = "bool";
+    public static final String DOUBLE = "double";
+    public static final String FLOAT = "float";
+
     public static void init(KuduClient client, String tableName) throws Exception {
         ConstantInitializationUtil.initialization(client,tableName);
     }
 
     public static void typeConversion(CaseInsensitiveMap map, PartialRow row, @NotNull String key, @NotNull String type) {
         Object value = map.get(key);
-        if(isNullObject(value)){
+        int i = KUDUDATESTRING.length() - 1;
+        if(STRING.equals(type) && -1 != KMPArithmetic.kmp(key,KUDUDATESTRING,new int[KUDUDATESTRING.length()]))
+        {
+            String tempKey = key.split(KUDUDATESTRING)[0];
+            Object tempValue = map.get(tempKey);
+            if(tempValue == null){
+                row.isNull(key);
+                return;
+            }
+            Long millisecond =Long.parseLong(tempValue.toString());
+            String dateString = DateUtil.millisecondFormat(millisecond, "yyyy-MM-dd HH:mm:ss");
+            row.addString(key,dateString);
+        } else if(isNullObject(value)) {
             row.isNull(key);
         } else {
             switch (type){
-                case "int8":
+                case BYTE:
                     row.addByte(key, Byte.parseByte(value.toString()));
                     break;
-                case "int16":
+                case SHORT:
                     row.addShort(key, Short.parseShort(value.toString()));
                     break;
-                case "int32":
+                case INT:
                     row.addInt(key, Integer.parseInt(value.toString()));
                     break;
-                case "int64":
+                case LONG:
+                case KUDUDATE:
                     row.addLong(key, Long.parseLong(value.toString()));
                     break;
-                case "string":
+                case STRING:
                     row.addString(key,value.toString());
                     break;
-                case "decimal":
+                case DECIMAL:
                     row.addDecimal(key, valueOf(Double.parseDouble(value.toString())));
                     break;
-                case "bool":
+                case BOOL:
                     row.addBoolean(key, Boolean.parseBoolean(value.toString()));
                     break;
-                case "double":
+                case DOUBLE:
                     row.addDouble(key, Double.parseDouble(value.toString()));
                     break;
-                case "float":
+                case FLOAT:
                     row.addFloat(key, Float.parseFloat(value.toString()));
                     break;
                 default:
