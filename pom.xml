@@ -17,6 +17,8 @@
     <properties>
         <kafka.version>2.2.0</kafka.version>
         <kudu-version>1.7.1</kudu-version>
+        <version.debezium>0.9.4.Final</version.debezium>
+        <version.debezium-api>1.1.1.Final</version.debezium-api>
     </properties>
 
 
@@ -59,6 +61,7 @@
             <version>1.2.3</version>
             <scope>test</scope>
         </dependency>
+
     </dependencies>
 
 </project>

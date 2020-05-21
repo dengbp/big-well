@@ -33,6 +33,9 @@ public class BulkRequest {
 
     private final String tableName;
 
+//    /** 0:insert，1:update，2：delete*/
+//    private final int operatorType;
+
     private final String values;
 
     public BulkRequest(KuduTable kuduTable, String tableName, String values) {

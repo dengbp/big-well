@@ -41,6 +41,7 @@ public class Example {
                 .build());
         Schema schema = new Schema(columns);
 
+
         // Set up the partition schema, which distributes rows to different tablets by hash.
         // Kudu also supports partitioning by key range. Hash and range partitioning can be combined.
         // For more information, see http://kudu.apache.org/docs/schema_design.html.
