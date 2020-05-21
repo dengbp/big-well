@@ -6,6 +6,8 @@ import org.apache.kudu.client.KuduClient;
 import org.apache.kudu.client.PartialRow;
 import org.jetbrains.annotations.NotNull;
 
+import java.text.ParseException;
+
 import static java.math.BigDecimal.valueOf;
 
 /**
@@ -28,6 +30,8 @@ public class KuduUtil {
     public static final String DOUBLE = "double";
     public static final String FLOAT = "float";
 
+    private static final String T = "T";
+
     public static void init(KuduClient client, String tableName) throws Exception {
         ConstantInitializationUtil.initialization(client,tableName);
     }
@@ -39,19 +43,26 @@ public class KuduUtil {
      * @param key kudu的列名
      * @param type kudu的类型
      */
-    public static void typeConversion(CaseInsensitiveMap map, PartialRow row, @NotNull String key, @NotNull String type) {
+    public static void typeConversion(CaseInsensitiveMap map, PartialRow row, @NotNull String key, @NotNull String type) throws ParseException {
         Object value = map.get(key);
         // 判断是否为date，datetime，TIMESTAMP 类型的string列
         if(STRING.equals(type) && -1 != KMPArithmetic.kmp(key,KUDUDATESTRING,new int[KUDUDATESTRING.length()]))
         {
             String tempKey = key.split(KUDUDATESTRING)[0];
-            Object tempValue = map.get(tempKey);
-            if(tempValue == null){
+            Object tempObject = map.get(tempKey);
+            if(tempObject == null){
                 row.isNull(key);
                 return;
             }
-            Long millisecond =Long.parseLong(tempValue.toString());
-            String dateString = DateUtil.millisecondFormat(millisecond, "yyyy-MM-dd HH:mm:ss");
+            String tempValue = tempObject.toString();
+            // TIMESTAMP 类型 推入数据格式为 2020-02-02T19:19:19Z 特殊处理
+            if(-1 != KMPArithmetic.kmp(tempValue,T,new int[T.length()])){
+                 tempValue = tempValue.replace("T", " ").replace("Z", "");
+                row.addString(key,tempValue);
+                return;
+            }
+            Long millisecond =Long.parseLong(tempValue);
+            String dateString = DateUtil.millisecondFormat(millisecond, DateUtil.yyyy_MM_dd_HH_mm_ss);
             row.addString(key,dateString);
             //为空处理
         } else if(isNullObject(value)) {
@@ -69,7 +80,6 @@ public class KuduUtil {
                     row.addInt(key, Integer.parseInt(value.toString()));
                     break;
                 case LONG:
-                case KUDUDATE:
                     row.addLong(key, Long.parseLong(value.toString()));
                     break;
                 case STRING:
@@ -87,6 +97,18 @@ public class KuduUtil {
                 case FLOAT:
                     row.addFloat(key, Float.parseFloat(value.toString()));
                     break;
+                case KUDUDATE:
+                    String dateValue = value.toString();
+                    Long millisecond;
+                    // TIMESTAMP 类型 推入数据格式为 2020-02-02T19:19:19Z 特殊处理
+                    if(-1 != KMPArithmetic.kmp(dateValue,T,new int[T.length()])){
+                        dateValue = dateValue.replace("T", " ").replace("Z", "");
+                        millisecond = DateUtil.getMillisecond(dateValue, DateUtil.yyyy_MM_dd_HH_mm_ss);
+                    } else {
+                        millisecond = Long.parseLong(dateValue);
+                    }
+                    row.addLong(key,millisecond);
+                    break;
                 default:
                     row.isNull(key);
             }
@@ -96,4 +118,5 @@ public class KuduUtil {
     public static boolean isNullObject(Object source){
         return null == source;
     }
+
 }

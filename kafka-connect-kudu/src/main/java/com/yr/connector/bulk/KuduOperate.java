@@ -2,14 +2,14 @@ package com.yr.connector.bulk;
 
 
 import com.alibaba.fastjson.JSON;
-import com.alibaba.fastjson.JSONObject;
-import com.yr.kudu.session.SessionManager;
+import com.yr.kudu.pojo.BingLog;
 import com.yr.kudu.session.TableTypeConstantMap;
 import com.yr.kudu.utils.KuduUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.map.CaseInsensitiveMap;
 import org.apache.kudu.client.*;
 
+import java.text.ParseException;
 import java.util.Map;
 
 /**
@@ -29,21 +29,31 @@ public class KuduOperate {
      * @Author dengbp
      * @Date 17:15 2020-05-18
      **/
-
-    public  void insert(KuduSession session, BulkRequest request) throws KuduException {
-        CaseInsensitiveMap map = JSON.parseObject(request.getValues(),CaseInsensitiveMap.class);
-        String tableName = request.getTableName();
+    public  void operation(KuduSession session, BulkRequest request) throws KuduException, ParseException {
+        BingLog bingLog = JSON.parseObject(request.getValues(), BingLog.class);
+        CaseInsensitiveMap mysqlSource;
+        Operation operation;
+        String tableName = bingLog.getSource().get("table");
         KuduTable kuduTable = request.getKuduTable();
-        Insert insert = kuduTable.newInsert();
-        PartialRow row = insert.getRow();
+        if(BingLog.DELETE.equals(bingLog.getOp())){
+            mysqlSource = bingLog.getBefore();
+            operation = kuduTable.newDelete();
+        } else if(BingLog.UPDATE.equals(bingLog.getOp())) {
+            mysqlSource = bingLog.getAfter();
+            operation = kuduTable.newUpdate();
+        } else {
+            mysqlSource = bingLog.getAfter();
+            operation = kuduTable.newInsert();
+        }
+        PartialRow row = operation.getRow();
         Map<String,String> kuduTableType = TableTypeConstantMap.kuduTables.get(tableName);
         Object[] objects = kuduTableType.keySet().toArray();
         for(int i = 0; i < objects.length; i++){
             String key = objects[i].toString();
             String type = kuduTableType.get(key);
-            KuduUtil.typeConversion(map, row, key, type);
+            KuduUtil.typeConversion(mysqlSource, row, key, type);
         }
-        session.apply(insert);
+        session.apply(operation);
         judge(session);
     }
 

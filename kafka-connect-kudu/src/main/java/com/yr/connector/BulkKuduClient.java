@@ -10,6 +10,7 @@ import org.apache.kudu.client.KuduException;
 import org.apache.kudu.client.KuduSession;
 
 import java.io.IOException;
+import java.text.ParseException;
 import java.util.List;
 
 /**
@@ -39,7 +40,11 @@ public class BulkKuduClient implements BulkClient<BulkRequest,BulkResponse> {
         final int[] batch = {0};
         reqs.forEach(req->{
             try {
-                kuduOperate.insert(session,req);
+                try {
+                    kuduOperate.operation(session,req);
+                } catch (ParseException e) {
+                    e.printStackTrace();
+                }
                 batch[0]++;
                 if (batch[0]>=SessionManager.OPERATION_BATCH/2){
                     session.flush();
