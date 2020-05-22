@@ -58,6 +58,13 @@ public class KuduWriter {
                 topicTableMap, client);
     }
 
+    /**
+     * Description 启动守护线程
+     * @param
+     * @return void
+     * @Author dengbp
+     * @Date 15:59 2020-05-22
+     **/
     public void start() {
         bulkProcessor.start();
     }

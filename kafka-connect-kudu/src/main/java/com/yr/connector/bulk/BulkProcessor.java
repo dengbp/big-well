@@ -1,18 +1,3 @@
-/*
- * Copyright 2018 Confluent Inc.
- *
- * Licensed under the Confluent Community License (the "License"); you may not use
- * this file except in compliance with the License.  You may obtain a copy of the
- * License at
- *
- * http://www.confluent.io/confluent-community-license
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OF ANY KIND, either express or implied.  See the License for the
- * specific language governing permissions and limitations under the License.
- */
-
 package com.yr.connector.bulk;
 
 import com.yr.kudu.utils.RetryUtil;
@@ -32,6 +17,11 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
+/**
+ * Description todo
+ * @Author dengbp
+ * @Date 15:02 2020-05-22
+ **/
 public class BulkProcessor {
 
   private static final Logger log = LoggerFactory.getLogger(BulkProcessor.class);
@@ -41,13 +31,15 @@ public class BulkProcessor {
   private final Time time;
   private final BulkClient<BulkRequest, BulkResponse> bulkClient;
   private final int maxBufferedRecords;
+  /** 缓存最大记录数 */
   private final int batchSize;
+  /** 最大滞留时间(毫秒) */
   private final long lingerMs;
   private final int maxRetries;
   private final long retryBackoffMs;
   private final BehaviorOnException behaviorOnException;
 
-  private final Thread farmer;
+  private final Thread daemonThread;
   private final ExecutorService executor;
 
   private volatile boolean stopRequested = false;
@@ -55,11 +47,30 @@ public class BulkProcessor {
   private final AtomicReference<ConnectException> error = new AtomicReference<>();
 
   private final Deque<BulkRequest> unsentRecords;
-  private int inFlightRecords = 0;
+  private AtomicInteger inFlightRecords = new AtomicInteger(0);
   private final LogContext logContext = new LogContext();
   /** topic——>table */
   private final Map<String,String> topicTableMap;
   private final KuduClient client;
+
+
+    /**
+     * Description 初始化处理任务
+     * @param time
+ * @param bulkClient
+ * @param maxBufferedRecords
+ * @param batchSize
+ * @param lingerMs
+ * @param maxRetries
+ * @param retryBackoffMs
+ * @param behaviorOnException
+ * @param topicTableMap
+ * @param client
+     * @return
+     * @Author dengbp
+     * @Date 16:00 2020-05-22
+     **/
+
 
     public BulkProcessor(
             Time time,
@@ -79,30 +90,30 @@ public class BulkProcessor {
     this.maxRetries = maxRetries;
     this.retryBackoffMs = retryBackoffMs;
     this.behaviorOnException = behaviorOnException;
-    unsentRecords = new ArrayDeque<>(maxBufferedRecords);
+    unsentRecords = new ConcurrentLinkedDeque();
       this.topicTableMap = topicTableMap;
       this.client = client;
-      final ThreadFactory threadFactory = makeThreadFactory();
-    farmer = threadFactory.newThread(farmerTask());
+      final ThreadFactory threadFactory = buildThreadFactory();
+      daemonThread = threadFactory.newThread(daemonTask());
     executor = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors()*2, threadFactory);
   }
 
-  private ThreadFactory makeThreadFactory() {
+  private ThreadFactory buildThreadFactory() {
     final AtomicInteger threadCounter = new AtomicInteger();
     final Thread.UncaughtExceptionHandler uncaughtExceptionHandler =
         new Thread.UncaughtExceptionHandler() {
           @Override
           public void uncaughtException(Thread t, Throwable e) {
-            log.error("Uncaught exception in BulkProcessor thread {}", t, e);
+            log.error("未捕获的异常， thread={}", t, e);
             failAndStop(e);
           }
         };
     return new ThreadFactory() {
       @Override
       public Thread newThread(Runnable r) {
-        final int threadId = threadCounter.getAndIncrement();
-        final int objId = System.identityHashCode(this);
-        final Thread t = new BulkProcessorThread(logContext, r, objId, threadId);
+        final int threadSeq = threadCounter.getAndIncrement();
+        final int objHashCode = System.identityHashCode(this);
+        final Thread t = new BulkProcessorThread(logContext, r, objHashCode, threadSeq);
         t.setDaemon(true);
         t.setUncaughtExceptionHandler(uncaughtExceptionHandler);
         return t;
@@ -110,11 +121,11 @@ public class BulkProcessor {
     };
   }
 
-  private Runnable farmerTask() {
+  private Runnable daemonTask() {
     return new Runnable() {
       @Override
       public void run() {
-          log.info("Starting farmer task thread");
+          log.info("Starting daemon task thread");
           try {
             while (!stopRequested) {
               submitBatchWhenReady();
@@ -122,12 +133,13 @@ public class BulkProcessor {
           } catch (InterruptedException e) {
             throw new ConnectException(e);
           }
-          log.debug("Finished farmer task thread");
+          log.debug("Finished daemon task thread");
       }
     };
   }
 
-  synchronized Future<BulkResponse> submitBatchWhenReady() throws InterruptedException {
+   Future<BulkResponse> submitBatchWhenReady() throws InterruptedException {
+    /** 判断记录滞留时间 */
     for (long waitStartTimeMs = time.milliseconds(), elapsedMs = 0;
          !stopRequested && !canSubmit(elapsedMs);
          elapsedMs = time.milliseconds() - waitStartTimeMs) {
@@ -136,7 +148,7 @@ public class BulkProcessor {
     return stopRequested ? null : submitBatch();
   }
 
-  private synchronized Future<BulkResponse> submitBatch() {
+  private Future<BulkResponse> submitBatch() {
     final int numUnsentRecords = unsentRecords.size();
     assert numUnsentRecords > 0;
     final int batchAbleSize = Math.min(batchSize, numUnsentRecords);
@@ -144,7 +156,7 @@ public class BulkProcessor {
     for (int i = 0; i < batchAbleSize; i++) {
       batch.add(unsentRecords.removeFirst());
     }
-    inFlightRecords += batchAbleSize;
+    inFlightRecords.addAndGet(batchAbleSize);
     log.info(
         "Submitting batch of {} records; {} unsent and {} total in-flight records",
             batchAbleSize,
@@ -154,13 +166,20 @@ public class BulkProcessor {
     return executor.submit(new BulkTask(batch));
   }
 
-  private synchronized boolean canSubmit(long elapsedMs) {
-    return !unsentRecords.isEmpty()
-           && (flushRequested || elapsedMs >= lingerMs || unsentRecords.size() >= batchSize);
+  /**
+   * Description 判断滞留时间
+   * @param elapsedMs 滞留时间
+   * @return boolean
+   * @Author dengbp
+   * @Date 16:05 2020-05-22
+   **/
+
+  private boolean canSubmit(long elapsedMs) {
+    return !unsentRecords.isEmpty() && (flushRequested || elapsedMs >= lingerMs || unsentRecords.size() >= batchSize);
   }
 
   public void start() {
-    farmer.start();
+    daemonThread.start();
   }
 
   public void stop() {
@@ -270,7 +289,7 @@ public class BulkProcessor {
 
     int numBufferedRecords = bufferedRecords();
     if (numBufferedRecords >= maxBufferedRecords) {
-      log.trace(
+      log.info(
           "Buffer full at {} records, so waiting up to {} ms before adding",
           numBufferedRecords,
           timeoutMs
@@ -299,6 +318,10 @@ public class BulkProcessor {
     try {
       String tableName = topicTableMap.get(record.topic());
       KuduTable table = client.openTable(tableName);
+     if (record.value()==null){
+       log.warn("!!! one record value is null from binlog tableName={},table={},record.value()={}",tableName,table, record.value());
+       return;
+     }
       BulkRequest request = new BulkRequest(table,tableName, record.value().toString());
       unsentRecords.addLast(request);
       notifyAll();
@@ -341,20 +364,21 @@ public class BulkProcessor {
     log.debug("Flushed bulk processor (total time={} ms)", time.milliseconds() - flushStartTimeMs);
   }
 
+
   private static final class BulkProcessorThread extends Thread {
 
     private final LogContext parentContext;
-    private final int threadId;
+    private final int threadSeq;
 
     public BulkProcessorThread(
         LogContext parentContext,
         Runnable target,
-        int objId,
-        int threadId
+        int objHashCode,
+        int threadSeq
     ) {
-      super(target, String.format("BulkProcessor@%d-%d", objId, threadId));
+      super(target, String.format("BulkProcessor@%d-%d", objHashCode, threadSeq));
       this.parentContext = parentContext;
-      this.threadId = threadId;
+      this.threadSeq = threadSeq;
     }
 
     @Override
@@ -395,34 +419,48 @@ public class BulkProcessor {
           log.trace("Executing batch {} of {} records with attempt {}/{}",
                   batchId, batch.size(), attempts, maxAttempts);
           final BulkResponse bulkRsp = (BulkResponse) bulkClient.execute(batch);
-          return bulkRsp;
-        } catch (Exception e) {
-          if (retriable && attempts < maxAttempts) {
-            long sleepTimeMs = RetryUtil.computeRandomRetryWaitTimeInMillis(retryAttempts,
-                    retryBackoffMs);
-            log.warn("Failed to execute batch {} of {} records with attempt {}/{}, "
-                      + "will attempt retry after {} ms. Failure reason: {}",
-                      batchId, batch.size(), attempts, maxAttempts, sleepTimeMs, e.getMessage());
-            time.sleep(sleepTimeMs);
-          } else {
-            log.error("Failed to execute batch {} of {} records after total of {} attempt(s)",
-                    batchId, batch.size(), attempts, e);
-            throw e;
+          if (bulkRsp.succeeded){
+            return bulkRsp;
+          }else {
+            retry(retriable, attempts, retryAttempts, maxAttempts,bulkRsp.getErrorInfo());
           }
+        } catch (Exception e) {
+          retry(retriable, attempts, retryAttempts, maxAttempts,e.getMessage());
         }
       }
     }
 
-    private void handleMalformedDoc(BulkResponse bulkRsp) {
+    private void retry(boolean retriable,int attempts,int retryAttempts,int maxAttempts,String errorInfo) throws Exception {
+      if (retriable && attempts < maxAttempts) {
+        long sleepTimeMs = RetryUtil.computeRandomRetryWaitTimeInMillis(retryAttempts,
+                retryBackoffMs);
+        log.warn("Failed to execute batch {} of {} records with attempt {}/{}, "
+                        + "will attempt retry after {} ms. Failure reason: {}",
+                batchId, batch.size(), attempts, maxAttempts, sleepTimeMs, errorInfo);
+        time.sleep(sleepTimeMs);
+      } else {
+        log.error("Failed to execute batch {} of {} records after total of {} attempt(s)",
+                batchId, batch.size(), attempts, errorInfo);
+        throw new Exception(errorInfo);
+      }
+    }
+
+    /**
+     * Description  异常处理策略
+     * @param bulkRsp
+     * @return void
+     * @Author dengbp
+     * @Date 16:36 2020-05-22
+     **/
+
+    private void handleExceptionRecord(BulkResponse bulkRsp) {
       switch (behaviorOnException) {
         case IGNORE:
-          log.debug("Encountered an illegal document error when executing batch {} of {}"
-                  + " records. Ignoring and will not index record. Error was {}",
+          log.debug("当前异常发生，采用忽略方式. 异常信息： {}",
               batchId, batch.size(), bulkRsp.getErrorInfo());
           return;
         case WARN:
-          log.warn("Encountered an illegal document error when executing batch {} of {}"
-                  + " records. Ignoring and will not index record. Error was {}",
+          log.warn("当前异常发生，采用告警方式. 异常信息： {}",
               batchId, batch.size(), bulkRsp.getErrorInfo());
           return;
         case FAIL:
@@ -437,15 +475,14 @@ public class BulkProcessor {
     }
   }
 
-  private boolean responseContainsMalformedDocError(BulkResponse bulkRsp) {
+  private boolean responseContainsException(BulkResponse bulkRsp) {
     return bulkRsp.getErrorInfo().contains("mapper_parsing_exception")
         || bulkRsp.getErrorInfo().contains("illegal_argument_exception")
-        || bulkRsp.getErrorInfo().contains("action_request_validation_exception");
+        || bulkRsp.getErrorInfo().contains("record_insert/update/delete_exception");
   }
 
-  private synchronized void onBatchCompletion(int batchSize) {
-    inFlightRecords -= batchSize;
-    assert inFlightRecords >= 0;
+  private  void onBatchCompletion(int batchSize) {
+    assert inFlightRecords.addAndGet(-batchSize) >= 0;
     notifyAll();
   }
 
@@ -454,8 +491,8 @@ public class BulkProcessor {
     stop();
   }
 
-  public synchronized int bufferedRecords() {
-    return unsentRecords.size() + inFlightRecords;
+  public int bufferedRecords() {
+    return inFlightRecords.addAndGet(unsentRecords.size());
   }
 
   private static ConnectException toConnectException(Throwable t) {

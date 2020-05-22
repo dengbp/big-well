@@ -17,24 +17,26 @@ package com.yr.connector.bulk;
 
 public class BulkResponse {
 
-  private static final BulkResponse SUCCESS_RESPONSE = new BulkResponse(true, false, "");
+  private static final BulkResponse SUCCESS_RESPONSE = new BulkResponse(true, false, "", "");
 
   public final boolean succeeded;
   public final boolean retriable;
   public final String errorInfo;
+  public final String errorRecord;
 
-  private BulkResponse(boolean succeeded, boolean retriable, String errorInfo) {
+  private BulkResponse(boolean succeeded, boolean retriable, String errorInfo, String errorRecord) {
     this.succeeded = succeeded;
     this.retriable = retriable;
     this.errorInfo = errorInfo;
+    this.errorRecord = errorRecord;
   }
 
   public static BulkResponse success() {
     return SUCCESS_RESPONSE;
   }
 
-  public static BulkResponse failure(boolean retriable, String errorInfo) {
-    return new BulkResponse(false, retriable, errorInfo);
+  public static BulkResponse failure(boolean retriable,String errorInfo,String errorRecord) {
+    return new BulkResponse(false, retriable, errorInfo, errorRecord);
   }
 
   public boolean isSucceeded() {

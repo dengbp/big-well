@@ -38,12 +38,15 @@ public class BulkKuduClient implements BulkClient<BulkRequest,BulkResponse> {
         final BulkResponse[] response = {null};
         KuduSession session = sessionManager.getSession();
         final int[] batch = {0};
-        reqs.forEach(req->{
+        for (BulkRequest req : reqs){
             try {
                 try {
                     kuduOperate.operation(session,req);
                 } catch (ParseException e) {
                     e.printStackTrace();
+                    log.error("Parse record exception table[{}]error,message:",req.getTableName(),req.getValues());
+                    response[0] = BulkResponse.failure(true,e.getMessage(),req.getValues());
+                    break;
                 }
                 batch[0]++;
                 if (batch[0]>=SessionManager.OPERATION_BATCH/2){
@@ -53,9 +56,10 @@ public class BulkKuduClient implements BulkClient<BulkRequest,BulkResponse> {
             } catch (KuduException e) {
                 e.printStackTrace();
                 log.error("insert table[{}]error,message:",req.getTableName(),req.getValues());
-                response[0] = BulkResponse.failure(true,e.getMessage());
+                response[0] = BulkResponse.failure(true,e.getMessage(),req.getValues());
+               break;
             }
-        });
+        };
         session.flush();
         session.close();
         return  response[0]==null?BulkResponse.success():response[0];
