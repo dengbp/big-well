@@ -16,6 +16,7 @@
 ## 安装:
 
 1.share/java创建一个插件目录如：kafka-kudu-sink
+
 2.Maven install之后将[kafka-connect-kudu-1.0-SNAPSHOT.jar](kafka-connect-kudu-1.0-SNAPSHOT.jar)包放入confluent安装目录下的share/java/kafka-kudu-sink/
 
 3.配置/etc/hosts 文件:IP 主机名称   ex:192.168.1.9 slave1
@@ -68,9 +69,11 @@
 
 ## 后续版本计划:
 
-​	1.自定义创建kudu表
-​	2.异常数据的处理
-​		........
+  1.自定义创建kudu表
+
+  2.异常数据的处理
+
+   ........
 
 如有使用问题及优化建议可在Issues中提出.
 :email:215941826@qq.com,576833409@qq.com
