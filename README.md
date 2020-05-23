@@ -1,8 +1,7 @@
 # big-well
 **开发背景:*
 
-confluent 中的连接器没有直接连接kudu,而是连接impala. impala的性能是有一定的问题,当数据量越大,同步越慢.
-
+confluent 中kudu-sink连接器没有直接连接kudu,而是连接impala. impala的性能是有一定的问题,当数据量越大,同步越慢.再者impala安装环境依赖hive，为了数据的同步引入更多复杂的环境。这不是最佳方案。
 所以我们放弃了impala的使用,开发了此插件,用于同步kafka数据到kudu中.
 
 本插件基于confluent platform开发，实现kafka消息同步到kudu功能。单节点每秒可同步万条，支持增删改实时同步.支持1.7版本kudu所有支持的所有类型.对于mysql中date,datetime,timestamp 类型我们一律要求在kudu表中定义为unixtime_micros.
