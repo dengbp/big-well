@@ -1,7 +1,6 @@
 package kudu;
 
 import com.alibaba.fastjson.JSON;
-import com.yr.connector.bulk.KuduOperate;
 import com.yr.kudu.session.TableTypeConstantMap;
 import com.yr.kudu.utils.DateUtil;
 import com.yr.kudu.utils.KuduUtil;
@@ -11,7 +10,6 @@ import org.junit.Test;
 
 import java.math.BigDecimal;
 import java.text.ParseException;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 

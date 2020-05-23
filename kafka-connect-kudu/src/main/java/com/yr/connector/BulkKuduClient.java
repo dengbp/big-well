@@ -47,6 +47,8 @@ public class BulkKuduClient implements BulkClient<BulkRequest,BulkResponse> {
                     log.error("Parse record exception table[{}]error,message:",req.getTableName(),req.getValues());
                     response[0] = BulkResponse.failure(true,e.getMessage(),req.getValues());
                     break;
+                } catch (Exception e) {
+                    e.printStackTrace();
                 }
                 batch[0]++;
                 if (batch[0]>=SessionManager.OPERATION_BATCH/2){

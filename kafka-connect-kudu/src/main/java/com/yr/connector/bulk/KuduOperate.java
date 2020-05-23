@@ -30,7 +30,7 @@ public class KuduOperate {
      * @Author dengbp
      * @Date 17:15 2020-05-18
      **/
-    public  void operation(KuduSession session, BulkRequest request) throws KuduException, ParseException {
+    public  void operation(KuduSession session, BulkRequest request) throws Exception {
         BingLog bingLog = JSON.parseObject(request.getValues(), BingLog.class);
         log.info("request.getValues()={}",request.getValues());
         CaseInsensitiveMap mysqlSource;
@@ -54,6 +54,10 @@ public class KuduOperate {
         }
         PartialRow row = operation.getRow();
         Map<String,String> kuduTableType = TableTypeConstantMap.kuduTables.get(tableName);
+        if(null == kuduTable){
+            log.error("kudu中没有目标表:"+ tableName);
+            throw new Exception("kudu中没有目标表:"+ tableName);
+        }
        // 当是删除时只要主键信息 不需要非主键信息 加入非主键信息删除失败
         if(flag){
             List<String> primaryKeys = TableTypeConstantMap.kuduPrimaryKey.get(tableName);
