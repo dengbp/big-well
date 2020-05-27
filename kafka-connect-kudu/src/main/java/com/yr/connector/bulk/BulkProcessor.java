@@ -138,7 +138,7 @@ public class BulkProcessor {
     };
   }
 
-   Future<BulkResponse> submitBatchWhenReady() throws InterruptedException {
+   synchronized Future<BulkResponse> submitBatchWhenReady() throws InterruptedException {
     /** 判断记录滞留时间 */
     for (long waitStartTimeMs = time.milliseconds(), elapsedMs = 0;
          !stopRequested && !canSubmit(elapsedMs);
@@ -306,9 +306,10 @@ public class BulkProcessor {
       }
       throwIfTerminal();
       if (bufferedRecords() >= maxBufferedRecords) {
+        log.error("Add timeout expired before buffer availability,record={}",record.value().toString());
         throw new ConnectException("Add timeout expired before buffer availability");
       }
-      log.debug(
+      log.info(
           "Adding record to queue after waiting {} ms",
           time.milliseconds() - addStartTimeMs
       );
@@ -481,7 +482,7 @@ public class BulkProcessor {
         || bulkRsp.getErrorInfo().contains("record_insert/update/delete_exception");
   }
 
-  private  void onBatchCompletion(int batchSize) {
+  private synchronized void onBatchCompletion(int batchSize) {
     assert inFlightRecords.addAndGet(-batchSize) >= 0;
     notifyAll();
   }

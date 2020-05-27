@@ -102,9 +102,18 @@ public class KuduSinkTask extends SinkTask {
         writer.write(sinkRecords);
     }
 
+    /**
+     * Description offset.flush.timeout.ms
+     * @param offsets	 offsets
+     * @return void
+     * @Author dengbp
+     * @Date 18:55 2020-05-22
+     **/
+
     @Override
     public void flush(Map<TopicPartition, OffsetAndMetadata> offsets) {
         log.info("Flushing data to kudu with the following offsets: {}", offsets);
+        super.flush(offsets);
         writer.flush();
     }
 

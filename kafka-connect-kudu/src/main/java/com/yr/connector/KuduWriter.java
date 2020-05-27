@@ -21,6 +21,7 @@ public class KuduWriter {
 
     private final KuduClient client;
     private final Map<String, String> topicToTableMap;
+    /** 消息过期时间，如果消息缓存满了，在指定flushTimeoutMs之后无法放入就要报异常*/
     private final long flushTimeoutMs;
     private final BulkProcessor bulkProcessor;
     private final SessionManager sessionManager;

@@ -1,6 +1,7 @@
 package com.yr.kudu.utils;
 
 import com.yr.kudu.session.TableTypeConstantMap;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.kudu.ColumnSchema;
 import org.apache.kudu.client.KuduClient;
 import org.apache.kudu.client.KuduTable;
@@ -15,6 +16,7 @@ import java.util.Map;
  * @version 1.0
  * @date 2020/5/16 10:14 上午
  */
+@Slf4j
 public class ConstantInitializationUtil {
     /**
      *  需要同步表的信息初始化（包含Map<表名，Map<字段名，类型名称>>）
@@ -22,6 +24,7 @@ public class ConstantInitializationUtil {
      */
     public static void initialization(KuduClient client, String tableName) throws Exception {
         String[] tableNames = tableName.split(",");
+        log.info("init kudu table size={},tableNames={}",tableNames.length,tableName);
         if(tableNames.length ==0){
             return;
         }
