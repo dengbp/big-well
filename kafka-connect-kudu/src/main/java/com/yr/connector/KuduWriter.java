@@ -1,7 +1,7 @@
 package com.yr.connector;
 
 import com.yr.connector.bulk.BulkProcessor;
-import com.yr.connector.bulk.KuduOperate;
+import com.yr.connector.bulk.KuduOperator;
 import com.yr.kudu.session.SessionManager;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.common.utils.SystemTime;
@@ -49,7 +49,7 @@ public class KuduWriter {
         this.sessionManager = new SessionManager(client);
         this.bulkProcessor  = new BulkProcessor(
                 new SystemTime(),
-                new BulkKuduClient(new KuduOperate(), sessionManager),
+                new BulkKuduClient(new KuduOperator(), sessionManager),
                 maxBufferedRecords,
                 batchSize,
                 lingerMs,

@@ -1,22 +1,10 @@
 package kudu;
 
 
-import com.alibaba.fastjson.JSON;
-import com.alibaba.fastjson.JSONObject;
 import com.yr.connector.bulk.BulkRequest;
-import com.yr.connector.bulk.KuduOperate;
-import com.yr.kudu.pojo.BingLog;
-import com.yr.kudu.session.TableTypeConstantMap;
+import com.yr.connector.bulk.KuduOperator;
 import com.yr.kudu.utils.KuduUtil;
-import org.apache.commons.collections4.map.CaseInsensitiveMap;
-import org.apache.kafka.connect.json.JsonConverter;
 import org.apache.kudu.client.*;
-import org.junit.Test;
-
-import java.nio.charset.StandardCharsets;
-import java.util.HashMap;
-import java.util.Map;
-
 
 
 /**
@@ -42,7 +30,7 @@ public class JsonTest {
         String tableName = "dmp_datasource_info";
         KuduTable kuduTable = client.openTable("dmp_datasource_info");
         BulkRequest bulkRequest = new BulkRequest(kuduTable, tableName, str);
-        new KuduOperate().operation(session,bulkRequest);
+        new KuduOperator().operation(session,bulkRequest);
         session.flush();
         session.close();
     }

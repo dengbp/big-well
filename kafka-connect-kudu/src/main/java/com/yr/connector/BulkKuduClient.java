@@ -3,7 +3,7 @@ package com.yr.connector;
 import com.yr.connector.bulk.BulkClient;
 import com.yr.connector.bulk.BulkRequest;
 import com.yr.connector.bulk.BulkResponse;
-import com.yr.connector.bulk.KuduOperate;
+import com.yr.connector.bulk.KuduOperator;
 import com.yr.kudu.session.SessionManager;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kudu.client.KuduException;
@@ -22,11 +22,11 @@ import java.util.List;
 @Slf4j
 public class BulkKuduClient implements BulkClient<BulkRequest,BulkResponse> {
 
-    private final KuduOperate kuduOperate;
+    private final KuduOperator kuduOperate;
     private final SessionManager sessionManager;
 
 
-    public BulkKuduClient(KuduOperate kuduOperate, SessionManager sessionManager) {
+    public BulkKuduClient(KuduOperator kuduOperate, SessionManager sessionManager) {
         this.kuduOperate = kuduOperate;
         this.sessionManager = sessionManager;
     }

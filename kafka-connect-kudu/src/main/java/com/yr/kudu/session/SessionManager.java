@@ -13,6 +13,7 @@ import org.apache.kudu.client.SessionConfiguration;
 public class SessionManager {
     public static final int OPERATION_BATCH = 10000;
     private final KuduClient client;
+    private static final int TIMEOUT_MILLIS = 6000;
 
     public SessionManager(KuduClient client) {
         this.client = client;
@@ -29,6 +30,7 @@ public class SessionManager {
         KuduSession kuduSession = client.newSession();
         kuduSession.setFlushMode(SessionConfiguration.FlushMode.MANUAL_FLUSH);
         kuduSession.setMutationBufferSpace(OPERATION_BATCH);
+        kuduSession.setTimeoutMillis(TIMEOUT_MILLIS);
         return kuduSession;
     }
 

@@ -19,7 +19,7 @@ import java.util.Map;
  * @date 2020/5/17 4:19 下午
  */
 @Slf4j
-public class KuduOperate {
+public class KuduOperator {
 
 
 
