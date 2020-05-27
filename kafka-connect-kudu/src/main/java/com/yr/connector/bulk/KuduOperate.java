@@ -76,17 +76,17 @@ public class KuduOperate {
 
     private static void judge(KuduSession session) {
         if (session.countPendingErrors() != 0) {
-            log.info("errors inserting rows");
+            log.error("errors inserting rows");
             RowErrorsAndOverflowStatus roStatus = session.getPendingErrors();
             RowError[] errs = roStatus.getRowErrors();
             int numErrs = Math.min(errs.length, 5);
-            log.info("there were errors inserting rows to Kudu");
-            log.info("the first few errors follow:");
+            log.error("there were errors inserting rows to Kudu");
+            log.error("the first few errors follow:");
             for (int i = 0; i < numErrs; i++) {
-                log.info(errs[i]+"");
+                log.error(errs[i]+"");
             }
             if (roStatus.isOverflowed()) {
-                log.info("error buffer overflowed: some errors were discarded");
+                log.error("error buffer overflowed: some errors were discarded");
             }
             throw new RuntimeException("error inserting rows to Kudu");
         }

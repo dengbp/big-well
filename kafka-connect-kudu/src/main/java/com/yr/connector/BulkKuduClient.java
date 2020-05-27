@@ -64,6 +64,7 @@ public class BulkKuduClient implements BulkClient<BulkRequest,BulkResponse> {
         };
         session.flush();
         session.close();
+        log.info("flush into kudu dataBatch size={}",reqs.size());
         return  response[0]==null?BulkResponse.success():response[0];
     }
 }
