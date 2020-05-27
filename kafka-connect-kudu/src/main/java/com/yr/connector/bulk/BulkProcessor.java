@@ -47,7 +47,7 @@ public class BulkProcessor {
   private final AtomicReference<ConnectException> error = new AtomicReference<>();
 
   private final Deque<BulkRequest> unsentRecords;
-  private AtomicInteger inFlightRecords = new AtomicInteger(0);
+  private AtomicInteger inSendingRecords = new AtomicInteger(0);
   private final LogContext logContext = new LogContext();
   /** topic——>table */
   private final Map<String,String> topicTableMap;
@@ -156,12 +156,12 @@ public class BulkProcessor {
     for (int i = 0; i < batchAbleSize; i++) {
       batch.add(unsentRecords.removeFirst());
     }
-    inFlightRecords.addAndGet(batchAbleSize);
+    inSendingRecords.addAndGet(batch.size());
     log.info(
-        "Submitting batch of {} records; {} unsent and {} total in-flight records",
+        "Submitting batch of {} records; {} unsent and {} total in-sending records",
             batchAbleSize,
         numUnsentRecords,
-        inFlightRecords
+            inSendingRecords.get()
     );
     return executor.submit(new BulkTask(batch));
   }
@@ -482,8 +482,8 @@ public class BulkProcessor {
         || bulkRsp.getErrorInfo().contains("record_insert/update/delete_exception");
   }
 
-  private synchronized void onBatchCompletion(int batchSize) {
-    assert inFlightRecords.addAndGet(-batchSize) >= 0;
+  private  void onBatchCompletion(int batchSize) {
+    assert inSendingRecords.addAndGet(-batchSize) >= 0;
     notifyAll();
   }
 
@@ -493,7 +493,11 @@ public class BulkProcessor {
   }
 
   public int bufferedRecords() {
-    return inFlightRecords.addAndGet(unsentRecords.size());
+    int inSending = inSendingRecords.get();
+    int unsent = unsentRecords.size();
+    int total = inSendingRecords.addAndGet(unsentRecords.size());
+    log.info("inSend and unSend total records is ={},inSend records is={},unSent Records is={}",total,inSending,unsent);
+    return total;
   }
 
   private static ConnectException toConnectException(Throwable t) {
