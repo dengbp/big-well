@@ -1,10 +1,7 @@
 package com.yr.connector;
 
 import com.yr.connector.bulk.BulkProcessor;
-import com.yr.kudu.utils.KuduUtil;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.kafka.common.config.AbstractConfig;
-import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.AbstractConfig;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigDef.Importance;

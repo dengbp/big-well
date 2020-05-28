@@ -32,7 +32,6 @@ public class KuduOperator {
      **/
     public  void operation(KuduSession session, BulkRequest request) throws Exception {
         BingLog bingLog = JSON.parseObject(request.getValues(), BingLog.class);
-        log.info("request.getValues()={}",request.getValues());
         CaseInsensitiveMap mysqlSource;
         Operation operation;
         // 判断是否为删除
