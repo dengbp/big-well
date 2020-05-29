@@ -9,7 +9,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.map.CaseInsensitiveMap;
 import org.apache.kudu.client.*;
 
-import java.text.ParseException;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -36,8 +36,26 @@ public class KuduOperator {
         Operation operation;
         // 判断是否为删除
         boolean flag;
-        String tableName = TableTypeConstantMap.sourceSinkMap.get(bingLog.getSource().get("table"));
+        HashMap<String, String> source = bingLog.getSource();
+        String tableName;
+        if(source != null && source.size() != 0){
+            log.error("binglog日志有误 source中没有数据");
+            throw new Exception("binglog日志有误 source中没有数据");
+        } else {
+            String table = source.get("table");
+            if(table.isEmpty()){
+                log.error("binglog日志有误 source中没有table 信息");
+                throw new Exception("binglog日志有误 source中没有table 信息");
+            } else {
+               tableName = TableTypeConstantMap.sourceSinkMap.get(table);
+            }
+        }
+
         KuduTable kuduTable = request.getClient().openTable(tableName);
+        if(null == kuduTable){
+            log.error("kudu中没有目标表:"+ tableName);
+            throw new Exception("kudu中没有目标表:"+ tableName);
+        }
         if(BingLog.DELETE.equals(bingLog.getOp())){
             mysqlSource = bingLog.getBefore();
             operation = kuduTable.newDelete();
@@ -53,18 +71,14 @@ public class KuduOperator {
         }
         PartialRow row = operation.getRow();
         Map<String,String> kuduTableType = TableTypeConstantMap.kuduTables.get(tableName);
-        if(null == kuduTable){
-            log.error("kudu中没有目标表:"+ tableName);
-            throw new Exception("kudu中没有目标表:"+ tableName);
-        }
        // 当是删除时只要主键信息 不需要非主键信息 加入非主键信息删除失败
         if(flag){
             List<String> primaryKeys = TableTypeConstantMap.kuduPrimaryKey.get(tableName);
             KuduUtil.deleteTypeConversion(mysqlSource,row,kuduTableType,primaryKeys);
         } else {
             Object[] objects = kuduTableType.keySet().toArray();
-            for(int i = 0; i < objects.length; i++){
-                String key = objects[i].toString();
+            for (Object object : objects) {
+                String key = object.toString();
                 String type = kuduTableType.get(key);
                 KuduUtil.typeConversion(mysqlSource, row, key, type);
             }
