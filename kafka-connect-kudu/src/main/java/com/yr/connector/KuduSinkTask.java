@@ -88,7 +88,6 @@ public class KuduSinkTask extends SinkTask {
                 .setLingerMs(lingerMs)
                 .setRetryBackoffMs(retryBackoffMs)
                 .setMaxRetry(maxRetry)
-                .setTopicToTable(topicTableMap)
                 .setBehaviorOnException(behaviorOnException);
         writer = builder.build();
         writer.start();
