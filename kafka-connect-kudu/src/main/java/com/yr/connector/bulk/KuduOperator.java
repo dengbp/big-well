@@ -36,8 +36,8 @@ public class KuduOperator {
         Operation operation;
         // 判断是否为删除
         boolean flag;
-        String tableName = request.getTableName();
-        KuduTable kuduTable = request.getClient().openTable();
+        String tableName = TableTypeConstantMap.sourceSinkMap.get(bingLog.getSource().get("table"));
+        KuduTable kuduTable = request.getClient().openTable(tableName);
         if(BingLog.DELETE.equals(bingLog.getOp())){
             mysqlSource = bingLog.getBefore();
             operation = kuduTable.newDelete();
