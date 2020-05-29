@@ -92,7 +92,7 @@ public class BulkProcessor {
         this.client = client;
         final ThreadFactory threadFactory = buildThreadFactory();
         daemonThread = threadFactory.newThread(daemonTask());
-        executor = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors()*2, threadFactory);
+        executor = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors(), threadFactory);
     }
 
     private ThreadFactory buildThreadFactory() {
