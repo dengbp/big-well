@@ -48,9 +48,7 @@ confluent 中kudu-sink连接器没有直接连接kudu,而是连接impala. impala
 
   "topics": "dev.tb_uhome_acct_item_tmp_1",--消费topic名称，多个用逗号分开
 
-  "topic.table.map": "dev.tb_uhome_acct_item_tmp_1:tb_uhome_acct_item",--topic与kudu目标表映射，多个用逗号分开
-
-  "table.list": "tb_uhome_acct_item,tb_uhome_house",--kudu中需要同步的表名
+  "source.sink.map": "tb_uhome_acct_item:tb_uhome_acct_item,tb_uhome_house:tb_uhome_house",--源表同步到kudu表的映射
 
   "key.converter": "org.apache.kafka.connect.storage.StringConverter",--key类型转换
 
@@ -135,7 +133,7 @@ confluent 中kudu-sink连接器没有直接连接kudu,而是连接impala. impala
 
 * 4.Implementation: 
 
-  curl -i -X POST -H "Accept: application / json" -H "Content-Type: application / json" http: // localhost: 8083 / connectors / -d '{"name": "kafka-kudu -sink-19 "," config ": {" connector.class ":" com.yr.connector.KuduSinkConnector "," tasks.max ":" 1 "," topics ":" dev.tb_uhome_acct_item_tmp_1 "," topic. table.map ":" dev.tb_uhome_acct_item_tmp_1: tb_uhome_acct_item "," table.list ":" tb_uhome_acct_item, tb_uhome_house "," key.converter ":" org.apache.kafka.connect.storage.StringConverter "," value. : "org.apache .kafka.connect.storage.StringConverter "," kudu.masters ":" 127.0.0.1:7051","max.retries":"3","[retry.backoff.ms](retry.backoff.ms) " : "1000", "behavior.on.exception": "FAIL", "[linger.ms] (linger.ms)": "1000", "batch.size": "1000", "max.buffered.records ":" 8000 "," [flush.timeout.ms] (flush.timeout.ms) ":" 6000 "," [offset.flush.timeout.ms] (offset.flush.timeout.ms) ":" 5000 "}} '
+  curl -i -X POST -H "Accept: application / json" -H "Content-Type: application / json" http: // localhost: 8083 / connectors / -d '{"name": "kafka-kudu -sink-19 "," config ": {" connector.class ":" com.yr.connector.KuduSinkConnector "," tasks.max ":" 1 "," topics ":" dev.tb_uhome_acct_item_tmp_1","source.sink.map":"tb_uhome_acct_item:tb_uhome_acct_item,tb_uhome_house:tb_uhome_house"," key.converter ":" org.apache.kafka.connect.storage.StringConverter "," value. : "org.apache .kafka.connect.storage.StringConverter "," kudu.masters ":" 127.0.0.1:7051","max.retries":"3","[retry.backoff.ms](retry.backoff.ms) " : "1000", "behavior.on.exception": "FAIL", "[linger.ms] (linger.ms)": "1000", "batch.size": "1000", "max.buffered.records ":" 8000 "," [flush.timeout.ms] (flush.timeout.ms) ":" 6000 "," [offset.flush.timeout.ms] (offset.flush.timeout.ms) ":" 5000 "}} '
 
   **config information:** 
 
@@ -147,9 +145,7 @@ confluent 中kudu-sink连接器没有直接连接kudu,而是连接impala. impala
 
   " topics ":" dev.tb_uhome_acct_item_tmp_1 ",-Consumption topic names, multiple separated by commas
 
-  " topic.table.map ": "dev.tb_uhome_acct_item_tmp_1: tb_uhome_acct_item",-topic and kudu target table mapping, multiple separated by commas 
-
-  "table.list": "tb_uhome_acct_item, tb_uhome_house",-table name to be synchronized in kudu 
+  "source.sink.map": "tb_uhome_acct_item:tb_uhome_acct_item,tb_uhome_house:tb_uhome_house",-source table to target table map 
 
   "key.converter": " org.apache.kafka.connect.storage.StringConverter ",-key type conversion
 
