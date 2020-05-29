@@ -26,9 +26,8 @@ public class KuduSinkConnectorConfig  extends AbstractConfig {
     public static final String MAX_RETRIES_CONFIG = "max.retries";
     public static final String RETRY_BACKOFF_MS_CONFIG = "retry.backoff.ms";
     public static final String BEHAVIOR_ON_MALFORMED_CONFIG = "behavior.on.exception";
-    public static final String TOPIC_TABLE_MAP = "topic.table.map";
     public static final String KUDU_MASTERS = "kudu.masters";
-    public static final String TABLE_LIST = "table.list";
+    public static final String SOURCE_SINK_MAP = "source.sink.map";
 
     protected static final ConfigDef CONFIG = baseConfigDef();
 
@@ -50,7 +49,7 @@ public class KuduSinkConnectorConfig  extends AbstractConfig {
                 group,
                 ++order,
                 Width.LONG,
-                "Flush Timeout (ms)"
+                "batch_size_config"
         ).define(
                 MAX_BUFFERED_RECORDS_CONFIG,
                 Type.INT,
@@ -60,7 +59,7 @@ public class KuduSinkConnectorConfig  extends AbstractConfig {
                 group,
                 ++order,
                 Width.LONG,
-                "Flush Timeout (ms)"
+                "max_buffered_records_config"
         ).define(
                 LINGER_MS_CONFIG,
                 Type.LONG,
@@ -70,7 +69,7 @@ public class KuduSinkConnectorConfig  extends AbstractConfig {
                 group,
                 ++order,
                 Width.LONG,
-                "Flush Timeout (ms)"
+                "linger_ms_config"
         ).define(
                 MAX_RETRIES_CONFIG,
                 Type.INT,
@@ -80,7 +79,7 @@ public class KuduSinkConnectorConfig  extends AbstractConfig {
                 group,
                 ++order,
                 Width.SHORT,
-                "Flush Timeout (ms)"
+                "max_retries_config"
         ).define(
                 RETRY_BACKOFF_MS_CONFIG,
                 Type.LONG,
@@ -90,7 +89,7 @@ public class KuduSinkConnectorConfig  extends AbstractConfig {
                 group,
                 ++order,
                 Width.LONG,
-                "Flush Timeout (ms)"
+                "retry_backoff_ms_config"
         ).define(
                 FLUSH_TIMEOUT_MS_CONFIG,
                 Type.LONG,
@@ -100,17 +99,7 @@ public class KuduSinkConnectorConfig  extends AbstractConfig {
                 group,
                 ++order,
                 Width.SHORT,
-                "Flush Timeout (ms)"
-        ).define(
-                TABLE_LIST,
-                Type.STRING,
-                "",
-                Importance.HIGH,
-                FLUSH_TIMEOUT_MS_DOC,
-                group,
-                ++order,
-                Width.SHORT,
-                "Flush Timeout (ms)"
+                "flush_timeout_ms_config"
         ).define(
                 KUDU_MASTERS,
                 Type.STRING,
@@ -120,17 +109,17 @@ public class KuduSinkConnectorConfig  extends AbstractConfig {
                 group,
                 ++order,
                 Width.SHORT,
-                "Flush Timeout (ms)"
+                "kudu_masters"
         ).define(
-                TOPIC_TABLE_MAP,
+                SOURCE_SINK_MAP,
                 Type.STRING,
                 "",
                 Importance.HIGH,
-                FLUSH_TIMEOUT_MS_DOC,
+                "",
                 group,
                 ++order,
                 Width.SHORT,
-                "Flush Timeout (ms)"
+                "source_sink_map"
         ).define(
                 BEHAVIOR_ON_MALFORMED_CONFIG,
                 Type.STRING,
@@ -140,7 +129,7 @@ public class KuduSinkConnectorConfig  extends AbstractConfig {
                 group,
                 ++order,
                 Width.SHORT,
-                "Flush Timeout (ms)"
+                "behavior_on_malformed_config"
         );
     }
 

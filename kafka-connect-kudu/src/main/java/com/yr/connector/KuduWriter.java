@@ -20,31 +20,23 @@ import java.util.*;
 public class KuduWriter {
 
     private final KuduClient client;
-    private final Map<String, String> topicToTableMap;
     /** 消息过期时间，如果消息缓存满了，在指定flushTimeoutMs之后无法放入就要报异常*/
     private final long flushTimeoutMs;
     private final BulkProcessor bulkProcessor;
     private final SessionManager sessionManager;
 
-    public Map<String, String> getTopicTableMap() {
-        return topicTableMap;
-    }
 
-    /** topic——>table */
-    private final Map<String,String> topicTableMap;
     private final BulkProcessor.BehaviorOnException behaviorOnException;
 
 
-    private KuduWriter(KuduClient client, Map<String, String> topicToTableMap, long flushTimeoutMs,
+    private KuduWriter(KuduClient client, long flushTimeoutMs,
                        int maxBufferedRecords,
                        int batchSize,
                        long lingerMs,
                        int maxRetries,
-                       long retryBackoffMs,Map<String, String> topicTableMap, BulkProcessor.BehaviorOnException behaviorOnException) {
+                       long retryBackoffMs, BulkProcessor.BehaviorOnException behaviorOnException) {
         this.client = client;
-        this.topicToTableMap = topicToTableMap;
         this.flushTimeoutMs = flushTimeoutMs;
-        this.topicTableMap = topicTableMap;
         this.behaviorOnException = behaviorOnException;
         this.sessionManager = new SessionManager(client);
         this.bulkProcessor  = new BulkProcessor(
@@ -55,8 +47,7 @@ public class KuduWriter {
                 lingerMs,
                 maxRetries,
                 retryBackoffMs,
-                behaviorOnException,
-                topicTableMap, client);
+                behaviorOnException, client);
     }
 
     /**
@@ -87,7 +78,6 @@ public class KuduWriter {
 
 
     public static class Builder {
-        private String topicToTable;
         private long flushTimeoutMs;
         private int maxBufferedRecords;
         private int batchSize;
@@ -101,12 +91,6 @@ public class KuduWriter {
             this.client = client;
         }
 
-
-
-        public Builder setTopicToTable(String topicToTable) {
-            this.topicToTable = topicToTable;
-            return this;
-        }
 
         public Builder setFlushTimeoutMs(long flushTimeoutMs) {
             this.flushTimeoutMs = flushTimeoutMs;
@@ -149,18 +133,12 @@ public class KuduWriter {
 
 
         public KuduWriter build() {
-            String[] tableMaps = topicToTable.split(",");
-            Map<String,String> topicToTableMap = new HashMap();
-            for (String table : tableMaps){
-                topicToTableMap.put(table.split(":")[0],table.split(":")[1]);
-            }
-            return new KuduWriter(client, topicToTableMap,flushTimeoutMs,
+            return new KuduWriter(client,flushTimeoutMs,
                     maxBufferedRecords,
                     batchSize,
                     lingerMs,
                     maxRetry,
-                    retryBackoffMs,
-                    topicToTableMap, behaviorOnException);
+                    retryBackoffMs, behaviorOnException);
         }
     }
 }

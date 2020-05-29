@@ -8,8 +8,7 @@ import org.apache.kafka.common.utils.Time;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.sink.SinkRecord;
 import org.apache.kudu.client.KuduClient;
-import org.apache.kudu.client.KuduException;
-import org.apache.kudu.client.KuduTable;
+
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -46,8 +45,6 @@ public class BulkProcessor {
     private final Deque<BulkRequest> unsentRecords;
     private int inSendingRecords = 0;
     private final LogContext logContext = new LogContext();
-    /** topic——>table */
-    private final Map<String,String> topicTableMap;
     private final KuduClient client;
 
 
@@ -61,7 +58,6 @@ public class BulkProcessor {
      * @param maxRetries
      * @param retryBackoffMs
      * @param behaviorOnException
-     * @param topicTableMap
      * @param client
      * @return
      * @Author dengbp
@@ -77,8 +73,7 @@ public class BulkProcessor {
             long lingerMs,
             int maxRetries,
             long retryBackoffMs,
-            BehaviorOnException behaviorOnException,
-            Map<String, String> topicTableMap, KuduClient client) {
+            BehaviorOnException behaviorOnException, KuduClient client) {
         this.time = time;
         this.bulkClient = bulkClient;
         this.maxBufferedRecords = maxBufferedRecords;
@@ -88,7 +83,6 @@ public class BulkProcessor {
         this.retryBackoffMs = retryBackoffMs;
         this.behaviorOnException = behaviorOnException;
         unsentRecords = new ArrayDeque<>(maxBufferedRecords);
-        this.topicTableMap = topicTableMap;
         this.client = client;
         final ThreadFactory threadFactory = buildThreadFactory();
         daemonThread = threadFactory.newThread(daemonTask());
@@ -313,19 +307,13 @@ public class BulkProcessor {
         } else {
             log.trace("Adding record to queue");
         }
-        try {
-            String tableName = topicTableMap.get(record.topic());
-            KuduTable table = client.openTable(tableName);
-            if (record.value()==null){
-                log.warn("!!! one record value is null from binlog tableName={},table={},record.value()={}",tableName,table, record.value());
-                return;
-            }
-            BulkRequest request = new BulkRequest(table,tableName, record.value().toString());
-            unsentRecords.addLast(request);
-            notifyAll();
-        } catch (KuduException e) {
-            e.printStackTrace();
+        if (record.value()==null){
+            log.warn("!!! one record value is null from binlog in topic={}",record.topic());
+            return;
         }
+        BulkRequest request = new BulkRequest(client, record.value().toString());
+        unsentRecords.addLast(request);
+        notifyAll();
     }
 
     /**

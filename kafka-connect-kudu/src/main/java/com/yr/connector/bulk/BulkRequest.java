@@ -17,6 +17,7 @@ package com.yr.connector.bulk;
 
 
 import lombok.Data;
+import org.apache.kudu.client.KuduClient;
 import org.apache.kudu.client.KuduTable;
 
 
@@ -29,18 +30,13 @@ import org.apache.kudu.client.KuduTable;
 @Data
 public class BulkRequest {
 
-    private final KuduTable kuduTable;
+    private final KuduClient client;
 
-    private final String tableName;
-
-//    /** 0:insert，1:update，2：delete*/
-//    private final int operatorType;
 
     private final String values;
 
-    public BulkRequest(KuduTable kuduTable, String tableName, String values) {
-        this.kuduTable = kuduTable;
-        this.tableName = tableName;
+    public BulkRequest(KuduClient client, String values) {
+        this.client = client;
         this.values = values;
     }
 }

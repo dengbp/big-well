@@ -44,7 +44,7 @@ public class BulkKuduClient implements BulkClient<BulkRequest,BulkResponse> {
                     kuduOperate.operation(session,req);
                 } catch (ParseException e) {
                     e.printStackTrace();
-                    log.error("Parse record exception table[{}]error,message:",req.getTableName(),req.getValues());
+                    log.error("Parse record exception error,message:{}",req.getValues());
                     response[0] = BulkResponse.failure(true,e.getMessage(),req.getValues());
                     break;
                 } catch (Exception e) {
@@ -57,7 +57,7 @@ public class BulkKuduClient implements BulkClient<BulkRequest,BulkResponse> {
                 }
             } catch (KuduException e) {
                 e.printStackTrace();
-                log.error("insert table[{}]error,message:",req.getTableName(),req.getValues());
+                log.error("insert message error,record:{}",req.getValues());
                 response[0] = BulkResponse.failure(true,e.getMessage(),req.getValues());
                break;
             }

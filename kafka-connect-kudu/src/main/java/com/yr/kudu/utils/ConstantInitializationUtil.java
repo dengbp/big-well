@@ -18,18 +18,26 @@ import java.util.Map;
  */
 @Slf4j
 public class ConstantInitializationUtil {
+
     /**
-     *  需要同步表的信息初始化（包含Map<表名，Map<字段名，类型名称>>）
-     * @throws Exception
-     */
+     * Description todo
+     * @param client
+ * @param tableName	 tb_uhome_acct_item:tb_uhome_acct_item,tb_uhome_house:tb_uhome_house
+     * @return void
+     * @Author baiYang
+     * @Date 15:37 2020-05-29
+     **/
+
     public static void initialization(KuduClient client, String tableName) throws Exception {
         String[] tableNames = tableName.split(",");
         log.info("init kudu table size={},tableNames={}",tableNames.length,tableName);
         if(tableNames.length ==0){
             return;
         }
-        for(String s : tableNames){
-            KuduTable kuduTable = client.openTable(s);
+        for(String map : tableNames){
+            String[] ss = map.split(":");
+            TableTypeConstantMap.sourceSinkMap.put(ss[0],ss[1]);
+            KuduTable kuduTable = client.openTable(ss[1]);
             List<ColumnSchema> columns = kuduTable.getSchema().getColumns();
             Map<String, String> stringMapHashMap = new HashMap<>(columns.size());
             List<String> primaryKeys = new ArrayList<>();
@@ -39,8 +47,8 @@ public class ConstantInitializationUtil {
                 }
                 stringMapHashMap.put(c.getName(), c.getType().getName());
             }
-            TableTypeConstantMap.kuduTables.put(s,stringMapHashMap);
-            TableTypeConstantMap.kuduPrimaryKey.put(s,primaryKeys);
+            TableTypeConstantMap.kuduTables.put(ss[1],stringMapHashMap);
+            TableTypeConstantMap.kuduPrimaryKey.put(ss[1],primaryKeys);
         }
     }
 }

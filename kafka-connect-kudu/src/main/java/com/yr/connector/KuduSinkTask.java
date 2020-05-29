@@ -72,12 +72,11 @@ public class KuduSinkTask extends SinkTask {
                     TimeUnit.MILLISECONDS.toHours(maxRetryBackoffMs));
         }
 
-        String topicTableMap = config.getString(KuduSinkConnectorConfig.TOPIC_TABLE_MAP);
         String kuduMasters = config.getString(KuduSinkConnectorConfig.KUDU_MASTERS);
         client = new KuduClient.KuduClientBuilder(kuduMasters).build();
         try {
-            String tableList = config.getString(KuduSinkConnectorConfig.TABLE_LIST);
-            KuduUtil.init(client,tableList);
+            String sourceSinkTableMap = config.getString(KuduSinkConnectorConfig.SOURCE_SINK_MAP);
+            KuduUtil.init(client,sourceSinkTableMap);
         } catch (Exception e) {
             e.printStackTrace();
             log.error("初始化失败...");

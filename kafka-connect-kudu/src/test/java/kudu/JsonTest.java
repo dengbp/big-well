@@ -29,7 +29,7 @@ public class JsonTest {
 //        log.info("request.getValues()={}",str.getValues());
         String tableName = "dmp_datasource_info";
         KuduTable kuduTable = client.openTable("dmp_datasource_info");
-        BulkRequest bulkRequest = new BulkRequest(kuduTable, tableName, str);
+        BulkRequest bulkRequest = new BulkRequest(client, str);
         new KuduOperator().operation(session,bulkRequest);
         session.flush();
         session.close();
