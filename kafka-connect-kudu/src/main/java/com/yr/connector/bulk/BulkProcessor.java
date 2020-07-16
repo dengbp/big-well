@@ -403,7 +403,7 @@ public class BulkProcessor {
                 boolean retriable = true;
                 try {
                     final BulkResponse bulkRsp = (BulkResponse) bulkClient.execute(batch);
-                    log.info("Executing batch: {} of {} records with attempt: {}/{},use time:{} ms",
+                    log.info("Executing batchId: {} of {} records with attempt: {}/{},use time:{} ms",
                             batchId, batch.size(), attempts, maxAttempts,(System.currentTimeMillis()-startTime));
                     if (bulkRsp.succeeded){
                         return bulkRsp;
