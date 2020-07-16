@@ -76,6 +76,18 @@ confluent 中kudu-sink连接器没有直接连接kudu,而是连接impala. impala
 
 }
 
+## 生产测试效果:
+
+
+
+单个分区每5秒可达到13W的吞吐量,每秒的吞吐大小再5M左右
+
+![WechatIMG18196](/Users/baiyang/Desktop/java思维导图分析/WechatIMG18196.png)
+
+![](/Users/baiyang/Desktop/java思维导图分析/WechatIMG18199.png)
+
+
+
 ## 后续版本计划:
 
   1.自定义创建kudu表
