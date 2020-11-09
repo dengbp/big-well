@@ -18,7 +18,7 @@ public class ConcurrentLinkedDequePerformanTest {
         int size = 5000000;
         for (int i=0;i<size;i++){
             String iStr = Integer.toString(i);
-            BulkRequest request = new BulkRequest(null,"", iStr);
+            BulkRequest request = new BulkRequest(null, iStr);
             unsentRecords.addLast(request);
         }
 

@@ -19,7 +19,7 @@ public class ArrayDequeDequePerformanTest {
         Deque<BulkRequest> unsentRecords = new ArrayDeque(size);
         for (int i=0;i<size;i++){
             String iStr = Integer.toString(i);
-            BulkRequest request = new BulkRequest(null,"", iStr);
+            BulkRequest request = new BulkRequest(null, iStr);
             unsentRecords.addLast(request);
         }
 

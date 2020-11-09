@@ -12,6 +12,7 @@
     <modules>
         <module>log-streams</module>
         <module>kafka-connect-kudu</module>
+        <module>log-collection</module>
     </modules>
 
     <properties>
