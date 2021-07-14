@@ -20,6 +20,8 @@
         <kudu-version>1.7.1</kudu-version>
         <version.debezium>0.9.4.Final</version.debezium>
         <version.debezium-api>1.1.1.Final</version.debezium-api>
+        <kafka.version>2.2.0</kafka.version>
+        <kafka.connector.version>2.1.1</kafka.connector.version>
     </properties>
 
 
