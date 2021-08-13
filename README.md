@@ -49,6 +49,7 @@ confluent 中kudu-sink连接器没有直接连接kudu,而是连接impala. impala
   "topics": "dev.tb_uhome_acct_item_tmp_1",--消费topic名称，多个用逗号分开
 
   "source.sink.map": "tb_uhome_acct_item:tb_uhome_acct_item,tb_uhome_house:tb_uhome_house",--源表同步到kudu表的映射
+  "table.list": "tb_uhome_acct_item,tb_uhome_house",--源表同步到kudu表的映射
 
   "key.converter": "org.apache.kafka.connect.storage.StringConverter",--key类型转换
 
